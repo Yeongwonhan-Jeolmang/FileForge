@@ -187,7 +187,7 @@ def zero_file(path: str) -> tuple[bool, str]:
 def write_audio_tags(path: str, tags: dict[str, str]) -> tuple[bool, str]:
     """Write audio metadata tags via mutagen (easy interface)."""
     try:
-        from mutagen import File as MutagenFile
+        from mutagen._file import File as MutagenFile
         mf = MutagenFile(path, easy=True)
         if mf is None:
             return False, "Mutagen cannot handle this file format."
@@ -208,7 +208,7 @@ def write_audio_tags(path: str, tags: dict[str, str]) -> tuple[bool, str]:
 def delete_audio_tags(path: str) -> tuple[bool, str]:
     """Delete all audio tags from a file."""
     try:
-        from mutagen import File as MutagenFile
+        from mutagen._file import File as MutagenFile
         mf = MutagenFile(path)
         if mf is None:
             return False, "Mutagen cannot handle this file format."
