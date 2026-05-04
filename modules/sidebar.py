@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTreeWidget, QTreeWidgetItem,
+    QPushButton, QSizePolicy, QTreeWidget, QTreeWidgetItem,
     QFileDialog, QFrame, QLineEdit, QAbstractItemView,
     QListWidget, QListWidgetItem, QTabWidget,
 )
@@ -53,7 +53,8 @@ class Sidebar(QWidget):
         hl.addStretch()
 
         open_btn = QPushButton("Open…")
-        open_btn.setFixedWidth(60)
+        open_btn.setMinimumWidth(80)
+        open_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         open_btn.clicked.connect(self._open_dialog)
         hl.addWidget(open_btn)
 
