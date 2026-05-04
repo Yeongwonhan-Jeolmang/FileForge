@@ -250,5 +250,10 @@ class MainWindow(QMainWindow):
             "• MD5 / SHA-1 / SHA-256 hashing with verification<br>"
             "• Audio tag editing (mutagen)<br>"
             "• Batch rename with regex<br>"
-            "• Hex preview, EXIF viewer, extended attributes<br>"
+            "• Hex preview, EXIF viewer, extended attributes<br><br>"
+            "<b>Credits</b><br>"
+            "Hana Eun-Seo: UI and Programming<br>"
+            "Florian van den Bersselaar: UI<br>"
+            "Simon Roberge: UI and Programming<br>"
+            "Anna Zieleman: Programming"
         )
