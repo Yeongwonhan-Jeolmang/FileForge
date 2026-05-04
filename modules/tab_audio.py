@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QFrame, QLineEdit, QScrollArea,
     QFormLayout, QMessageBox,
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from modules.file_info import FileInfo
 from modules.file_ops import write_audio_tags, delete_audio_tags
@@ -69,7 +69,7 @@ class AudioTab(QWidget):
             "(MP3, FLAC, OGG, M4A, etc.)."
         )
         self._not_audio_lbl.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 12px;")
-        self._not_audio_lbl.setAlignment(0x04)  # AlignHCenter
+        self._not_audio_lbl.setAlignment(Qt.AlignHCenter)
         layout.addWidget(self._not_audio_lbl)
 
         # ── Tag form ───────────────────────────────────────────────────
@@ -78,7 +78,7 @@ class AudioTab(QWidget):
         form = QFormLayout(form_card)
         form.setContentsMargins(16, 16, 16, 16)
         form.setSpacing(10)
-        form.setLabelAlignment(0x02)  # AlignRight
+        form.setLabelAlignment(Qt.AlignRight)
 
         for key, label in COMMON_TAGS:
             field = QLineEdit()
