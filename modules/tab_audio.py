@@ -70,6 +70,7 @@ class AudioTab(QWidget):
         )
         self._not_audio_lbl.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 12px;")
         self._not_audio_lbl.setAlignment(Qt.AlignHCenter)
+        self._not_audio_lbl.setWordWrap(True)
         layout.addWidget(self._not_audio_lbl)
 
         # ── Tag form ───────────────────────────────────────────────────
