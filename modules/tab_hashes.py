@@ -46,6 +46,7 @@ class HashesTab(QWidget):
         super().__init__(parent)
         self._info: FileInfo | None = None
         self._thread: QThread | None = None
+        self._worker: HashWorker | None = None
         self._hashes: dict[str, str] = {}
 
         outer = QVBoxLayout(self)
@@ -196,7 +197,9 @@ class HashesTab(QWidget):
         thread.finished.connect(lambda: self._compute_btn.setEnabled(True))
         thread.finished.connect(self._progress.finish)
 
+        self._worker = worker
         self._thread = thread
+        thread.finished.connect(self._cleanup_thread)
         thread.start()
 
     def _on_hashes_done(self, results: dict):
@@ -227,6 +230,14 @@ class HashesTab(QWidget):
                 return
         self._verify_result.setText("✗  No match with any computed hash.")
         self._verify_result.setStyleSheet(f"color: {ERROR}; font-weight: bold;")
+
+    def _cleanup_thread(self):
+        if self._thread is not None:
+            self._thread.deleteLater()
+            self._thread = None
+        if self._worker is not None:
+            self._worker.deleteLater()
+            self._worker = None
 
     # ── Helpers ────────────────────────────────────────────────────────
 
