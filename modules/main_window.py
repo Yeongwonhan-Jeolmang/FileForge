@@ -80,6 +80,8 @@ class MainWindow(QMainWindow):
         self._tabs.setTabPosition(QTabWidget.North)
         self._tabs.setMovable(False)
         self._tabs.setDocumentMode(True)
+        self._tabs.tabBar().setElideMode(Qt.ElideNone)
+        self._tabs.tabBar().setExpanding(False)
 
         self._tab_overview    = OverviewTab()
         self._tab_rename      = RenameTab()

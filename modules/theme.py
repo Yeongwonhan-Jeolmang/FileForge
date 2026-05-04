@@ -95,6 +95,8 @@ QTabBar::tab {{
     background: {BG_MID};
     color: {TEXT_SECONDARY};
     padding: 8px 18px;
+    min-width: 100px;
+    min-height: 34px;
     border: 1px solid {BORDER};
     border-bottom: none;
     border-top-left-radius: 4px;
