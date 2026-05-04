@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
-from modules.main_window import MainWindow # Placeholder for now
+from modules.main_window import MainWindow
 
 
 def main():
