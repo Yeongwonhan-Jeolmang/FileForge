@@ -77,6 +77,9 @@ class Sidebar(QWidget):
 
         # ── Tabs: Recent | Browser ─────────────────────────────────────
         tabs = QTabWidget()
+        tabs.tabBar().setElideMode(Qt.ElideNone)
+        tabs.tabBar().setExpanding(True)
+        tabs.tabBar().setUsesScrollButtons(False)
         tabs.setStyleSheet(
             "QTabBar::tab { padding: 6px 14px; font-size: 11px; }"
             f"QTabWidget::pane {{ border: none; background: {BG_DARKEST}; }}"
