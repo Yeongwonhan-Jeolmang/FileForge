@@ -14,6 +14,7 @@ from modules.theme import (
     BG_PANEL, BG_CARD, ACCENT, TEXT_PRIMARY, TEXT_SECONDARY,
     BORDER, SUCCESS, ERROR, BG_HOVER,
 )
+from modules.entropy_calculator import calculate_entropy, entropy_percentage, entropy_description
 
 
 class OverviewTab(QWidget):
@@ -77,6 +78,15 @@ class OverviewTab(QWidget):
             ("Kind",      info.kind.capitalize()),
         ])
         self._add_card(card)
+
+        # ── Entropy ────────────────────────────────────────────────────
+        entropy = calculate_entropy(info.path)
+        entropy_pct = entropy_percentage(entropy)
+        entropy_desc = entropy_description(entropy)
+
+        self._add_section("Analysis")
+        entropy_card = self._make_entropy_card(entropy, entropy_pct, entropy_desc)
+        self._add_card(entropy_card)
 
         # ── Timestamps ─────────────────────────────────────────────────
         self._add_section("Timestamps")
@@ -205,5 +215,56 @@ class OverviewTab(QWidget):
         for key, val in rows:
             row = KVRow(key, val)
             layout.addWidget(row)
+
+        return frame
+
+    def _make_entropy_card(self, entropy: float, percentage: float, description: str) -> QWidget:
+        from PyQt5.QtWidgets import QProgressBar, QLabel
+
+        frame = QFrame()
+        frame.setStyleSheet(
+            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER};"
+            f"border-radius: 6px; }}"
+        )
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+
+        # Title
+        title = QLabel("Shannon Entropy")
+        title.setStyleSheet(f"font-weight: bold; color: {TEXT_PRIMARY};")
+        layout.addWidget(title)
+
+        # Progress bar
+        progress = QProgressBar()
+        progress.setRange(0, 100)
+        progress.setValue(int(percentage))
+        progress.setTextVisible(True)
+        progress.setFormat(f"{entropy:.2f} bits/byte ({percentage:.1f}%)")
+
+        # Color based on entropy level
+        if entropy < 3.0:
+            color = "#4CAF50"  # Green for low entropy
+        elif entropy < 5.0:
+            color = "#FF9800"  # Orange for medium
+        else:
+            color = "#F44336"  # Red for high entropy
+
+        progress.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {BORDER};
+                border-radius: 3px;
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background-color: {color};
+            }}
+        """)
+        layout.addWidget(progress)
+
+        # Description
+        desc = QLabel(description)
+        desc.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px;")
+        layout.addWidget(desc)
 
         return frame

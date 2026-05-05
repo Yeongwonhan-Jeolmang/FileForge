@@ -97,6 +97,8 @@ class FileInfo:
     md5: Optional[str] = None
     sha1: Optional[str] = None
     sha256: Optional[str] = None
+    sha512: Optional[str] = None
+    blake2: Optional[str] = None
  
     # Rich metadata
     image_meta: Optional[ImageMetadata] = None
@@ -272,13 +274,19 @@ def read_file_info(path: str) -> FileInfo:
     return info
  
  
-def compute_hashes(path: str, algorithms: list[str] = None,
-                   progress_cb=None) -> dict[str, str]:
-    """Compute file hashes. algorithms: list of 'md5','sha1','sha256'."""
+def compute_hashes(path: str, algorithms: list[str] = None, progress_cb=None) -> dict[str, str]:
+    """Compute file hashes. algorithms: list of 'md5','sha1','sha256','sha512','blake2'."""
     if algorithms is None:
         algorithms = ["md5", "sha1", "sha256"]
- 
-    hashers = {a: hashlib.new(a) for a in algorithms}
+
+    # Handle blake2 specially as it needs a constructor
+    hashers = {}
+    for a in algorithms:
+        if a == "blake2":
+            hashers[a] = hashlib.blake2b()
+        else:
+            hashers[a] = hashlib.new(a)
+
     total = os.path.getsize(path)
     done = 0
     chunk = 65536

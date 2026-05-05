@@ -1,5 +1,5 @@
 """
-tab_hashes.py — Compute & verify MD5 / SHA-1 / SHA-256 hashes in a background thread.
+tab_hashes.py — Compute & verify MD5 / SHA-1 / SHA-256 / SHA-512 / BLAKE2 hashes in a background thread.
 """
 
 from __future__ import annotations
@@ -75,10 +75,12 @@ class HashesTab(QWidget):
         self._chk_md5    = QCheckBox("MD5")
         self._chk_sha1   = QCheckBox("SHA-1")
         self._chk_sha256 = QCheckBox("SHA-256")
+        self._chk_sha512 = QCheckBox("SHA-512")
+        self._chk_blake2 = QCheckBox("BLAKE2")
         self._chk_md5.setChecked(True)
         self._chk_sha1.setChecked(True)
         self._chk_sha256.setChecked(True)
-        for chk in (self._chk_md5, self._chk_sha1, self._chk_sha256):
+        for chk in (self._chk_md5, self._chk_sha1, self._chk_sha256, self._chk_sha512, self._chk_blake2):
             al.addWidget(chk)
         al.addStretch()
         layout.addWidget(algo_card)
@@ -103,7 +105,7 @@ class HashesTab(QWidget):
         self._hash_fields: dict[str, QLineEdit] = {}
         self._copy_btns:  dict[str, QPushButton] = {}
 
-        for algo in ("md5", "sha1", "sha256"):
+        for algo in ("md5", "sha1", "sha256", "sha512", "blake2"):
             row = QHBoxLayout()
             lbl = QLabel(algo.upper() + ":")
             lbl.setFixedWidth(70)
@@ -137,7 +139,7 @@ class HashesTab(QWidget):
         vl.addWidget(QLabel("Paste expected hash to verify:"))
         verify_row = QHBoxLayout()
         self._verify_edit = QLineEdit()
-        self._verify_edit.setPlaceholderText("Paste MD5, SHA-1 or SHA-256 hash here…")
+        self._verify_edit.setPlaceholderText("Paste MD5, SHA-1, SHA-256, SHA-512 or BLAKE2 hash here…")
         self._verify_btn = QPushButton("Verify")
         self._verify_btn.setObjectName("primary")
         self._verify_btn.clicked.connect(self._verify)
@@ -177,6 +179,8 @@ class HashesTab(QWidget):
         if self._chk_md5.isChecked():    algos.append("md5")
         if self._chk_sha1.isChecked():   algos.append("sha1")
         if self._chk_sha256.isChecked(): algos.append("sha256")
+        if self._chk_sha512.isChecked(): algos.append("sha512")
+        if self._chk_blake2.isChecked(): algos.append("blake2")
         if not algos:
             self._banner.show_message("Select at least one algorithm.", "warning")
             return
