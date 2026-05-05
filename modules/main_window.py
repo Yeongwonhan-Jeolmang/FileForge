@@ -195,7 +195,7 @@ class MainWindow(QMainWindow):
         view_menu = mb.addMenu("View")
         for i, name in enumerate(["Overview", "Metadata", "Analysis", "Batch"]):
             act = QAction(name, self)
-            act.setShortcut(QKeySequence(f"Ctrl+{i+1}"))
+            act.setShortcut(QKeySequence(f"Ctrl+Shift+{i+1}"))
             act.triggered.connect(lambda checked, idx=i: self._tabs.setCurrentIndex(idx))
             view_menu.addAction(act)
 
@@ -386,6 +386,13 @@ class MainWindow(QMainWindow):
     def _show_comparison(self):
         dialog = ComparisonDialog(self)
         dialog.exec_()
+
+    def closeEvent(self, event):
+        # Clean up background threads
+        if hasattr(self, '_load_thread') and self._load_thread.isRunning():
+            self._load_thread.quit()
+            self._load_thread.wait()
+        event.accept()
 
     # ── Drag and Drop ───────────────────────────────────────────────────
 

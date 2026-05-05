@@ -248,7 +248,7 @@ def read_file_info(path: str) -> FileInfo:
     owner, group = _owner_group(st)
  
     info = FileInfo(
-        path         = str(p.resolve()),
+        path         = str(p),
         name         = p.name,
         stem         = p.stem,
         suffix       = p.suffix,

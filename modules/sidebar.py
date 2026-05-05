@@ -3,6 +3,7 @@ sidebar.py — Left-panel file browser: recent files + directory tree.
 """
 
 from __future__ import annotations
+import mimetypes
 import os
 from pathlib import Path
 
@@ -20,7 +21,6 @@ from modules.theme import (
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
 )
 from modules.widgets import kind_icon
-from modules.file_info import read_file_info
 
 
 MAX_RECENT = 20
@@ -147,6 +147,19 @@ class Sidebar(QWidget):
         self.add_recent(path)
         self.file_selected.emit(path)
 
+    def set_current_folder(self, folder: str):
+        """Switch the browser view to a specific directory."""
+        if not os.path.isdir(folder):
+            return
+        self._dir_tree.clear()
+        item = QTreeWidgetItem([folder])
+        item.setData(0, Qt.UserRole, folder)
+        item.setForeground(0, QColor(ACCENT))
+        placeholder = QTreeWidgetItem(["__loading__"])
+        item.addChild(placeholder)
+        self._dir_tree.addTopLevelItem(item)
+        self._dir_tree.expandItem(item)
+
     # ── Slots ─────────────────────────────────────────────────────────
 
     def _open_dialog(self):
@@ -186,11 +199,7 @@ class Sidebar(QWidget):
         self._recent_list.clear()
         for path in self._recent:
             p = Path(path)
-            try:
-                info = read_file_info(path)
-                icon = kind_icon(info.kind)
-            except Exception:
-                icon = "📄"
+            icon = self._icon_for_path(path)
             item = QListWidgetItem(f"{icon}  {p.name}")
             item.setData(Qt.UserRole, path)
             item.setToolTip(path)
@@ -228,15 +237,33 @@ class Sidebar(QWidget):
                 placeholder = QTreeWidgetItem(["__loading__"])
                 child.addChild(placeholder)
             else:
-                try:
-                    info = read_file_info(str(entry))
-                    icon = kind_icon(info.kind)
-                except Exception:
-                    icon = "📄"
+                icon = self._icon_for_path(str(entry))
                 child = QTreeWidgetItem([f"{icon}  {name}"])
                 child.setData(0, Qt.UserRole, str(entry))
                 child.setForeground(0, QColor(TEXT_PRIMARY))
             parent.addChild(child)
+
+    def _icon_for_path(self, file_path: str) -> str:
+        kind = "other"
+        mime, _ = mimetypes.guess_type(file_path)
+        if mime:
+            if mime.startswith("image/"):
+                kind = "image"
+            elif mime.startswith("audio/"):
+                kind = "audio"
+            elif mime.startswith("video/"):
+                kind = "video"
+            elif mime.startswith("text/"):
+                kind = "text"
+            elif "pdf" in mime:
+                kind = "document"
+        else:
+            suffix = Path(file_path).suffix.lower()
+            if suffix in (".doc", ".docx", ".odt", ".xls", ".xlsx", ".ppt", ".pptx"):
+                kind = "document"
+            elif suffix in (".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".zst"):
+                kind = "archive"
+        return kind_icon(kind)
 
     @staticmethod
     def _get_roots() -> list[tuple[str, str]]:
