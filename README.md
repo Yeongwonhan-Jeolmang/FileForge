@@ -14,6 +14,10 @@ FileForge is an advanced desktop application for inspecting and editing file met
 - Batch rename files using plain-text or regular expressions
 - Inspect file content with a hex preview of the first 512 bytes
 - View symlink targets, EXIF/image metadata, and extended attributes
+- Compare two files with side-by-side diff view, metadata comparison, and entropy analysis
+- Inspect digital signatures for executable files (Authenticode, PGP)
+- Extract and filter printable strings from binary files
+- Calculate file entropy to assess randomness or compression potential
 - Recent files sidebar for quick reopen
 
 ## User Interface
@@ -69,6 +73,16 @@ FileForge is built with PyQt5 and organizes functionality into the following tab
    - Inspect extended attributes
    - Display symlink target information
    - Browse EXIF/image metadata for image files
+
+9. **Signatures**
+   - Display digital signature information for signed files
+   - Verify Authenticode and PGP signatures
+   - Show certificate details and signature validity
+
+10. **Strings**
+    - Extract printable strings from binary files
+    - Configure minimum string length and text encoding
+    - Filter and search through extracted strings
 
 ## Installation
 
@@ -129,6 +143,14 @@ python main.py
 - `modules/tab_audio.py` — Audio tag editing UI
 - `modules/tab_batch.py` — Batch rename UI
 - `modules/tab_advanced.py` — Advanced file operations and metadata viewers
+- `modules/tab_signatures.py` — Digital signature inspection UI
+- `modules/tab_strings.py` — String extraction and display UI
+- `modules/comparison_dialog.py` — File comparison dialog
+- `modules/entropy_calculator.py` — File entropy calculation utilities
+- `modules/file_watcher.py` — File change monitoring
+- `modules/settings_dialog.py` — Application settings dialog
+- `modules/signature_inspector.py` — Digital signature inspection utilities
+- `modules/strings_extractor.py` — String extraction utilities
 - `modules/theme.py` — UI styling constants
 - `modules/widgets.py` — Reusable custom widgets and controls
 
