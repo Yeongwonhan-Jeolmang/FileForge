@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
 
         # View
         view_menu = mb.addMenu("View")
-        for i, name in enumerate(["Overview", "Rename/Move", "Timestamps", "Permissions", "Hashes", "Audio Tags", "Batch Rename", "Advanced", "Strings", "Signatures"]):
+        for i, name in enumerate(["Overview", "Metadata", "Analysis", "Batch"]):
             act = QAction(name, self)
             act.setShortcut(QKeySequence(f"Ctrl+{i+1}"))
             act.triggered.connect(lambda checked, idx=i: self._tabs.setCurrentIndex(idx))
