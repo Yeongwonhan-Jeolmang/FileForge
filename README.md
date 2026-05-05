@@ -141,3 +141,10 @@ python main.py
 ## License
 
 FileForge is released under the MIT License. See the `LICENSE` file for details.
+
+## Credits
+
+- Hana Eun-Seo: UI and Programming
+- Florian van den Bersselaar: UI
+- Simon Roberge: UI and Programming
+- Anna Zieleman: Programming
