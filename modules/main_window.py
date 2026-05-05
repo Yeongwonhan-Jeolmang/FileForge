@@ -25,6 +25,11 @@ from modules.tab_hashes       import HashesTab
 from modules.tab_audio        import AudioTab
 from modules.tab_batch        import BatchTab
 from modules.tab_advanced     import AdvancedTab
+from modules.settings_dialog  import SettingsDialog
+from modules.file_watcher     import FileWatcher
+from modules.tab_strings      import StringsTab
+from modules.tab_signatures   import SignaturesTab
+from modules.comparison_dialog import ComparisonDialog
 
 
 # ── Background loader ──────────────────────────────────────────────────────
@@ -54,9 +59,12 @@ class MainWindow(QMainWindow):
         self.resize(1280, 820)
         self.setMinimumSize(900, 600)
         self.setStyleSheet(STYLESHEET)
+        self.setAcceptDrops(True) # Enable drag and drop
 
         self._current_info: FileInfo | None = None
         self._loader_thread: QThread | None = None
+        self._file_watcher = FileWatcher(self)
+        self._file_watcher.file_changed.connect(self._on_file_changed_externally)
 
         self._build_ui()
         self._build_menu()
@@ -92,6 +100,8 @@ class MainWindow(QMainWindow):
         self._tab_audio       = AudioTab()
         self._tab_batch       = BatchTab()
         self._tab_advanced    = AdvancedTab()
+        self._tab_strings     = StringsTab()
+        self._tab_signatures  = SignaturesTab()
 
         self._tabs.addTab(self._tab_overview,    "Overview")
         self._tabs.addTab(self._tab_rename,      "Rename / Move")
@@ -101,6 +111,8 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._tab_audio,       "Audio Tags")
         self._tabs.addTab(self._tab_batch,       "Batch Rename")
         self._tabs.addTab(self._tab_advanced,    "Advanced")
+        self._tabs.addTab(self._tab_strings,     "Strings")
+        self._tabs.addTab(self._tab_signatures,  "Signatures")
 
         # Wire file_changed signals → reload
         for tab in [self._tab_rename, self._tab_timestamps,
@@ -127,10 +139,20 @@ class MainWindow(QMainWindow):
         open_act.triggered.connect(self._open_dialog)
         file_menu.addAction(open_act)
 
+        open_folder_act = QAction("Open Folder…", self)
+        open_folder_act.setShortcut(QKeySequence("Ctrl+Shift+O"))
+        open_folder_act.triggered.connect(self._open_folder_dialog)
+        file_menu.addAction(open_folder_act)
+
         reload_act = QAction("Reload", self)
         reload_act.setShortcut(QKeySequence("F5"))
         reload_act.triggered.connect(self._force_reload)
         file_menu.addAction(reload_act)
+
+        close_act = QAction("Close File", self)
+        close_act.setShortcut(QKeySequence("Ctrl+W"))
+        close_act.triggered.connect(self._close_file)
+        file_menu.addAction(close_act)
 
         file_menu.addSeparator()
         quit_act = QAction("Quit", self)
@@ -140,13 +162,23 @@ class MainWindow(QMainWindow):
 
         # View
         view_menu = mb.addMenu("View")
-        for i, name in enumerate(["Overview", "Rename/Move", "Timestamps",
-                                   "Permissions", "Hashes", "Audio Tags",
-                                   "Batch Rename", "Advanced"]):
+        for i, name in enumerate(["Overview", "Rename/Move", "Timestamps", "Permissions", "Hashes", "Audio Tags", "Batch Rename", "Advanced", "Strings", "Signatures"]):
             act = QAction(name, self)
             act.setShortcut(QKeySequence(f"Ctrl+{i+1}"))
             act.triggered.connect(lambda checked, idx=i: self._tabs.setCurrentIndex(idx))
             view_menu.addAction(act)
+
+        # Tools
+        tools_menu = mb.addMenu("Tools")
+        settings_act = QAction("Settings…", self)
+        settings_act.setShortcut(QKeySequence("Ctrl+,"))
+        settings_act.triggered.connect(self._show_settings)
+        tools_menu.addAction(settings_act)
+
+        compare_act = QAction("Compare Files…", self)
+        compare_act.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        compare_act.triggered.connect(self._show_comparison)
+        tools_menu.addAction(compare_act)
 
         # Help
         help_menu = mb.addMenu("Help")
@@ -179,6 +211,11 @@ class MainWindow(QMainWindow):
         if path:
             self._load_file(path)
 
+    def _open_folder_dialog(self):
+        folder = QFileDialog.getExistingDirectory(self, "Open Folder")
+        if folder:
+            self._sidebar.set_current_folder(folder)
+
     def _load_file(self, path: str):
         if not os.path.isfile(path):
             self._show_error(f"Not a file or not found:\n{path}")
@@ -197,7 +234,12 @@ class MainWindow(QMainWindow):
         worker.error.connect(thread.quit)
         self._loader_thread = thread
         thread.start()
-
+    def _on_file_changed_externally(self, path: str):
+        """Handle external file changes - auto-refresh if enabled."""
+        settings = SettingsDialog()
+        if settings.get_auto_refresh_enabled() and self._current_info and self._current_info.path == path:
+            self.statusBar().showMessage("File changed externally - reloading…", 3000)
+            self._reload_file(path)
         self._sidebar.add_recent(path)
 
     def _reload_file(self, path: str):
@@ -209,20 +251,41 @@ class MainWindow(QMainWindow):
         if self._current_info:
             self._reload_file(self._current_info.path)
 
+    def _close_file(self):
+        self._current_info = None
+        self._file_watcher.stop_watching()
+        self._populate_tabs(None)
+        self._update_status_for_closed()
+
     def _on_info_loaded(self, info: FileInfo):
         self._current_info = info
+        self._file_watcher.watch_file(info.path)
         self._populate_tabs(info)
         self._update_status(info)
 
     def _populate_tabs(self, info: FileInfo):
-        self._tab_overview.load(info)
-        self._tab_rename.load(info)
-        self._tab_timestamps.load(info)
-        self._tab_permissions.load(info)
-        self._tab_hashes.load(info)
-        self._tab_audio.load(info)
-        self._tab_advanced.load(info)
-        # BatchTab manages its own list; we don't force-load it
+        if info is None:
+            self._tab_overview.clear()
+            self._tab_rename.clear()
+            self._tab_timestamps.clear()
+            self._tab_permissions.clear()
+            self._tab_hashes.clear()
+            self._tab_audio.clear()
+            self._tab_advanced.clear()
+            self._tab_strings.clear()
+            self._tab_signatures.clear()
+            # BatchTab manages its own list; we don't force-clear it
+        else:
+            self._tab_overview.load(info)
+            self._tab_rename.load(info)
+            self._tab_timestamps.load(info)
+            self._tab_permissions.load(info)
+            self._tab_hashes.load(info)
+            self._tab_audio.load(info)
+            self._tab_advanced.load(info)
+            self._tab_strings.load(info)
+            self._tab_signatures.load(info)
+            # BatchTab manages its own list; we don't force-load it
 
     def _update_status(self, info: FileInfo):
         self._status_file.setText(info.path)
@@ -230,6 +293,13 @@ class MainWindow(QMainWindow):
         self._status_size.setText(info.size_human)
         self.statusBar().showMessage("")
         self.setWindowTitle(f"FileForge — {info.name}")
+
+    def _update_status_for_closed(self):
+        self._status_file.setText("No file loaded")
+        self._status_kind.setText("")
+        self._status_size.setText("")
+        self.statusBar().showMessage("")
+        self.setWindowTitle("FileForge — File Properties Manager")
 
     # ── Helpers ────────────────────────────────────────────────────────
 
@@ -240,20 +310,62 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         QMessageBox.about(
             self, "About FileForge",
-            "<b>FileForge v1.0</b><br>"
-            "A fully-featured file properties manager.<br><br>"
-            "Features:<br>"
-            "• Overview with rich metadata<br>"
-            "• Rename, move, copy, change extension<br>"
+            "<b>FileForge v1.1</b><br>"
+            "A comprehensive file properties and analysis manager.<br><br>"
+            "<b>Core Features:</b><br>"
+            "• Rich metadata inspection with entropy analysis<br>"
+            "• File rename, move, copy operations<br>"
             "• Precise timestamp editing<br>"
-            "• Visual permission editor with presets<br>"
-            "• MD5 / SHA-1 / SHA-256 hashing with verification<br>"
-            "• Audio tag editing (mutagen)<br>"
-            "• Batch rename with regex<br>"
-            "• Hex preview, EXIF viewer, extended attributes<br><br>"
-            "<b>Credits</b><br>"
-            "Hana Eun-Seo: UI and Programming<br>"
-            "Florian van den Bersselaar: UI<br>"
-            "Simon Roberge: UI and Programming<br>"
-            "Anna Zieleman: Programming"
+            "• Visual permission editor<br>"
+            "• Multiple hash algorithms (MD5, SHA-1, SHA-256, SHA-512, BLAKE2)<br>"
+            "• Audio tag editing<br>"
+            "• Batch rename with regex support<br><br>"
+            "<b>Advanced Features:</b><br>"
+            "• File entropy calculation and analysis<br>"
+            "• String extraction from binary files<br>"
+            "• Digital signature inspection (Authenticode, PGP/GPG)<br>"
+            "• File comparison tool with diff modes<br>"
+            "• Hex preview and binary analysis<br>"
+            "• File watcher with auto-refresh<br>"
+            "• Drag-and-drop file opening<br>"
+            "• Customizable settings and keyboard shortcuts<br><br>"
+            "<b>Supported Platforms:</b><br>"
+            "Windows, macOS, Linux<br><br>"
+            "<b>Credits:</b><br>"
+            "Hana Eun-Seo, Florian van den Bersselaar,<br>"
+            "Simon Roberge, Anna Zieleman"
         )
+
+    def _show_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
+
+    def _show_comparison(self):
+        dialog = ComparisonDialog(self)
+        dialog.exec_()
+
+    # ── Drag and Drop ───────────────────────────────────────────────────
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls and len(urls) == 1:
+                url = urls[0]
+                if url.isLocalFile():
+                    path = url.toLocalFile()
+                    if os.path.isfile(path):
+                        event.acceptProposedAction()
+                        return
+        event.ignore()
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls()
+        if urls and len(urls) == 1:
+            url = urls[0]
+            if url.isLocalFile():
+                path = url.toLocalFile()
+                if os.path.isfile(path):
+                    self._load_file(path)
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
