@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QSplitter,
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter,
     QTabWidget, QStatusBar, QAction, QMenuBar,
     QLabel, QFileDialog, QMessageBox,
 )
@@ -104,16 +104,46 @@ class MainWindow(QMainWindow):
         self._tab_strings     = StringsTab()
         self._tab_signatures  = SignaturesTab()
 
-        self._tabs.addTab(self._tab_overview,    "Overview")
-        self._tabs.addTab(self._tab_rename,      "Rename / Move")
-        self._tabs.addTab(self._tab_timestamps,  "Timestamps")
-        self._tabs.addTab(self._tab_permissions, "Permissions")
-        self._tabs.addTab(self._tab_hashes,      "Hashes")
-        self._tabs.addTab(self._tab_audio,       "Audio Tags")
-        self._tabs.addTab(self._tab_batch,       "Batch Rename")
-        self._tabs.addTab(self._tab_advanced,    "Advanced")
-        self._tabs.addTab(self._tab_strings,     "Strings")
-        self._tabs.addTab(self._tab_signatures,  "Signatures")
+        # Metadata section with nested tabs
+        self._metadata_tab = QWidget()
+        metadata_layout = QVBoxLayout(self._metadata_tab)
+        metadata_layout.setContentsMargins(0, 0, 0, 0)
+        metadata_layout.setSpacing(0)
+        self._metadata_tabs = QTabWidget()
+        self._metadata_tabs.setTabPosition(QTabWidget.North)
+        self._metadata_tabs.setMovable(False)
+        self._metadata_tabs.setDocumentMode(True)
+        self._metadata_tabs.tabBar().setElideMode(Qt.ElideNone)
+        self._metadata_tabs.tabBar().setExpanding(True)
+        self._metadata_tabs.tabBar().setUsesScrollButtons(False)
+        self._metadata_tabs.addTab(self._tab_rename, "Rename / Move")
+        self._metadata_tabs.addTab(self._tab_timestamps, "Timestamps")
+        self._metadata_tabs.addTab(self._tab_permissions, "Permissions")
+        metadata_layout.addWidget(self._metadata_tabs)
+
+        # Analysis section with nested tabs
+        self._analysis_tab = QWidget()
+        analysis_layout = QVBoxLayout(self._analysis_tab)
+        analysis_layout.setContentsMargins(0, 0, 0, 0)
+        analysis_layout.setSpacing(0)
+        self._analysis_tabs = QTabWidget()
+        self._analysis_tabs.setTabPosition(QTabWidget.North)
+        self._analysis_tabs.setMovable(False)
+        self._analysis_tabs.setDocumentMode(True)
+        self._analysis_tabs.tabBar().setElideMode(Qt.ElideNone)
+        self._analysis_tabs.tabBar().setExpanding(True)
+        self._analysis_tabs.tabBar().setUsesScrollButtons(False)
+        self._analysis_tabs.addTab(self._tab_hashes, "Hashes")
+        self._analysis_tabs.addTab(self._tab_audio, "Audio Tags")
+        self._analysis_tabs.addTab(self._tab_advanced, "Advanced")
+        self._analysis_tabs.addTab(self._tab_strings, "Strings")
+        self._analysis_tabs.addTab(self._tab_signatures, "Signatures")
+        analysis_layout.addWidget(self._analysis_tabs)
+
+        self._tabs.addTab(self._tab_overview, "Overview")
+        self._tabs.addTab(self._metadata_tab, "Metadata")
+        self._tabs.addTab(self._analysis_tab, "Analysis")
+        self._tabs.addTab(self._tab_batch, "Batch")
 
         # Wire file_changed signals → reload
         for tab in [self._tab_rename, self._tab_timestamps,
