@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
 
         self._current_info: FileInfo | None = None
         self._loader_thread: QThread | None = None
+        self._loader_worker: _Loader | None = None
         self._file_watcher = FileWatcher(self)
         self._file_watcher.file_changed.connect(self._on_file_changed_externally)
 
@@ -232,8 +233,12 @@ class MainWindow(QMainWindow):
         worker.done.connect(thread.quit)
         worker.error.connect(lambda e: self._show_error(e))
         worker.error.connect(thread.quit)
+        thread.finished.connect(self._cleanup_loader)
+
+        self._loader_worker = worker
         self._loader_thread = thread
         thread.start()
+
     def _on_file_changed_externally(self, path: str):
         """Handle external file changes - auto-refresh if enabled."""
         settings = SettingsDialog()
@@ -262,6 +267,14 @@ class MainWindow(QMainWindow):
         self._file_watcher.watch_file(info.path)
         self._populate_tabs(info)
         self._update_status(info)
+
+    def _cleanup_loader(self):
+        if self._loader_worker is not None:
+            self._loader_worker.deleteLater()
+            self._loader_worker = None
+        if self._loader_thread is not None:
+            self._loader_thread.deleteLater()
+            self._loader_thread = None
 
     def _populate_tabs(self, info: FileInfo):
         if info is None:
