@@ -6,7 +6,6 @@ from __future__ import annotations
 import zipfile
 import tarfile
 from pathlib import Path
-from typing import list
 
 try:
     import py7zr
