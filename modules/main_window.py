@@ -25,6 +25,9 @@ from modules.tab_hashes       import HashesTab
 from modules.tab_audio        import AudioTab
 from modules.tab_batch        import BatchTab
 from modules.tab_advanced     import AdvancedTab
+from modules.tab_folder_analysis import FolderAnalysisTab
+from modules.tab_integrity    import IntegrityTab
+from modules.tab_preview      import PreviewTab
 from modules.settings_dialog  import SettingsDialog
 from modules.file_watcher     import FileWatcher
 from modules.tab_strings      import StringsTab
@@ -93,16 +96,19 @@ class MainWindow(QMainWindow):
         self._tabs.tabBar().setExpanding(True)
         self._tabs.tabBar().setUsesScrollButtons(False)
 
-        self._tab_overview    = OverviewTab()
-        self._tab_rename      = RenameTab()
-        self._tab_timestamps  = TimestampsTab()
-        self._tab_permissions = PermissionsTab()
-        self._tab_hashes      = HashesTab()
-        self._tab_audio       = AudioTab()
-        self._tab_batch       = BatchTab()
-        self._tab_advanced    = AdvancedTab()
-        self._tab_strings     = StringsTab()
-        self._tab_signatures  = SignaturesTab()
+        self._tab_overview       = OverviewTab()
+        self._tab_rename         = RenameTab()
+        self._tab_timestamps     = TimestampsTab()
+        self._tab_permissions    = PermissionsTab()
+        self._tab_hashes         = HashesTab()
+        self._tab_audio          = AudioTab()
+        self._tab_batch          = BatchTab()
+        self._tab_advanced       = AdvancedTab()
+        self._tab_preview        = PreviewTab()
+        self._tab_folder_analysis = FolderAnalysisTab()
+        self._tab_integrity      = IntegrityTab()
+        self._tab_strings        = StringsTab()
+        self._tab_signatures     = SignaturesTab()
 
         # Metadata section with nested tabs
         self._metadata_tab = QWidget()
@@ -144,6 +150,9 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._metadata_tab, "Metadata")
         self._tabs.addTab(self._analysis_tab, "Analysis")
         self._tabs.addTab(self._tab_batch, "Batch")
+        self._tabs.addTab(self._tab_preview, "Preview")
+        self._tabs.addTab(self._tab_folder_analysis, "Folder")
+        self._tabs.addTab(self._tab_integrity, "Integrity")
 
         # Wire file_changed signals → reload
         for tab in [self._tab_rename, self._tab_timestamps,
@@ -317,6 +326,9 @@ class MainWindow(QMainWindow):
             self._tab_advanced.clear()
             self._tab_strings.clear()
             self._tab_signatures.clear()
+            self._tab_preview.clear()
+            self._tab_folder_analysis.clear()
+            self._tab_integrity.clear()
             # BatchTab manages its own list; we don't force-clear it
         else:
             self._tab_overview.load(info)
@@ -328,6 +340,9 @@ class MainWindow(QMainWindow):
             self._tab_advanced.load(info)
             self._tab_strings.load(info)
             self._tab_signatures.load(info)
+            self._tab_preview.load(info)
+            self._tab_folder_analysis.load(info)
+            self._tab_integrity.load(info)
             # BatchTab manages its own list; we don't force-load it
 
     def _update_status(self, info: FileInfo):

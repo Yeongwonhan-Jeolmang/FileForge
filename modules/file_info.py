@@ -26,7 +26,35 @@ try:
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
+try:
+    from PyPDF2 import PdfReader
+    HAS_PYPDF2 = True
+except ImportError:
+    HAS_PYPDF2 = False
 
+try:
+    from docx import Document as DocxDocument
+    HAS_DOCX = True
+except ImportError:
+    HAS_DOCX = False
+
+try:
+    import openpyxl
+    HAS_OPENPYXL = True
+except ImportError:
+    HAS_OPENPYXL = False
+
+try:
+    from pptx import Presentation
+    HAS_PPTX = True
+except ImportError:
+    HAS_PPTX = False
+
+try:
+    from pymediainfo import MediaInfo
+    HAS_MEDIainfo = True
+except ImportError:
+    HAS_MEDIainfo = False
 # ── Data structures ────────────────────────────────────────────────────────
 
 @dataclass
@@ -62,6 +90,30 @@ class AudioMetadata:
     sample_rate: Optional[int]
     channels: Optional[int]
     tags: dict = field(default_factory=dict)
+ 
+ 
+@dataclass
+class DocumentMetadata:
+    doc_type: str = ''
+    title: str = ''
+    author: str = ''
+    producer: str = ''
+    subject: str = ''
+    pages: Optional[int] = None
+    software: str = ''
+    topic: str = ''
+    comment: str = ''
+    snippet: str = ''
+ 
+ 
+@dataclass
+class VideoMetadata:
+    duration: Optional[float] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    bitrate: Optional[int] = None
+    codec: str = ''
+    format: str = ''
  
  
 @dataclass
@@ -103,9 +155,12 @@ class FileInfo:
     # Rich metadata
     image_meta: Optional[ImageMetadata] = None
     audio_meta: Optional[AudioMetadata] = None
+    document_meta: Optional[DocumentMetadata] = None
+    video_meta: Optional[VideoMetadata] = None
  
-    # Extended attributes
+    # Extended attributes and platform-specific extras
     xattrs: dict = field(default_factory=dict)
+    windows_ads: dict = field(default_factory=dict)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -211,6 +266,111 @@ def _audio_meta(path: str) -> Optional[AudioMetadata]:
     except Exception:
         return None
 
+
+def _document_meta(path: str, suffix: str) -> Optional[DocumentMetadata]:
+    if suffix == '.pdf' and HAS_PYPDF2:
+        try:
+            reader = PdfReader(path)
+            meta = reader.metadata or {}
+            title = getattr(meta, 'title', '') or ''
+            author = getattr(meta, 'author', '') or ''
+            producer = getattr(meta, 'producer', '') or ''
+            subject = getattr(meta, 'subject', '') or ''
+            software = getattr(meta, 'producer', '') or ''
+            pages = len(reader.pages)
+            snippet = ''
+            if pages:
+                try:
+                    snippet = reader.pages[0].extract_text() or ''
+                    snippet = snippet[:1200].replace('\n', ' ')
+                except Exception:
+                    snippet = ''
+            return DocumentMetadata(
+                doc_type='PDF', title=title, author=author,
+                producer=producer, subject=subject,
+                pages=pages, software=software, comment=str(getattr(meta, 'keywords', '') or ''),
+                topic=subject, snippet=snippet,
+            )
+        except Exception:
+            return None
+
+    if suffix == '.docx' and HAS_DOCX:
+        try:
+            doc = DocxDocument(path)
+            props = doc.core_properties
+            return DocumentMetadata(
+                doc_type='DOCX', title=props.title or '', author=props.author or '',
+                subject=props.subject or '', software=props.last_modified_by or '',
+                comment=props.comments or '', snippet='',
+            )
+        except Exception:
+            return None
+
+    if suffix in ('.xlsx', '.xls') and HAS_OPENPYXL:
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            return DocumentMetadata(
+                doc_type='Spreadsheet', title=Path(path).name,
+                pages=len(wb.sheetnames), snippet='',
+            )
+        except Exception:
+            return None
+
+    if suffix == '.pptx' and HAS_PPTX:
+        try:
+            prs = Presentation(path)
+            return DocumentMetadata(
+                doc_type='Presentation', title=Path(path).name,
+                pages=len(prs.slides), snippet='',
+            )
+        except Exception:
+            return None
+
+    return None
+
+
+def _video_meta(path: str) -> Optional[VideoMetadata]:
+    if not HAS_MEDIainfo:
+        return None
+    try:
+        info = MediaInfo.parse(path)
+        for track in info.tracks:
+            if track.track_type == 'Video':
+                duration_ms = getattr(track, 'duration', None)
+                duration = duration_ms / 1000 if duration_ms else None
+                return VideoMetadata(
+                    duration=duration,
+                    width=getattr(track, 'width', None),
+                    height=getattr(track, 'height', None),
+                    bitrate=getattr(track, 'bit_rate', None) or getattr(track, 'bitrate', None),
+                    codec=getattr(track, 'codec', '') or getattr(track, 'format', ''),
+                    format=getattr(track, 'format', ''),
+                )
+    except Exception:
+        pass
+    return None
+
+
+def _windows_ads(path: str) -> dict:
+    if platform.system() != 'Windows':
+        return {}
+    try:
+        import subprocess
+        output = subprocess.check_output(['cmd.exe', '/c', 'dir', '/r', str(Path(path))], stderr=subprocess.DEVNULL, text=True)
+        ads = {}
+        for line in output.splitlines():
+            if ':$DATA' in line and 'Directory of' not in line and line.strip():
+                parts = line.split()
+                if parts and parts[0].isdigit():
+                    size = int(parts[0])
+                    stream = parts[-1]
+                    ads[stream] = size
+        return ads
+    except Exception:
+        return {}
+
+
 def _xattrs(path: str) -> dict:
     if not hasattr(os, "getxattr"):
         return {}
@@ -267,9 +427,12 @@ def read_file_info(path: str) -> FileInfo:
         permissions  = _parse_permissions(mode),
         owner        = owner,
         group        = group,
-        image_meta   = _image_meta(path) if kind == "image" else None,
-        audio_meta   = _audio_meta(path) if kind == "audio" else None,
-        xattrs       = _xattrs(path),
+        image_meta    = _image_meta(path) if kind == "image" else None,
+        audio_meta    = _audio_meta(path) if kind == "audio" else None,
+        document_meta = _document_meta(path, suffix) if kind == "document" else None,
+        video_meta    = _video_meta(path) if kind == "video" else None,
+        xattrs        = _xattrs(path),
+        windows_ads   = _windows_ads(path),
     )
     return info
  
