@@ -1,6 +1,6 @@
 # FileForge
 
-[![Python CI](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml/badge.svg)](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml)
+[![Python CI](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml/badge.svg?branch=main)](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![Issues](https://img.shields.io/github/issues/Yeongwonhan-Jeolmang/FileForge)](https://github.com/Yeongwonhan-Jeolmang/FileForge/issues)
@@ -83,16 +83,29 @@ FileForge organizes functionality into the following main tabs:
 - Python 3.8 or later
 - PyQt5
 
-Optional packages for enhanced support:
+Optional packages for enhanced format support:
 
 - `Pillow` — image metadata and EXIF support
 - `mutagen` — audio metadata reading and writing
+- `PyPDF2` — PDF metadata support
+- `python-docx` — Word document metadata support
+- `python-pptx` — PowerPoint metadata support
+- `openpyxl` — Excel metadata support
+- `py7zr` — 7z archive support
+- `pymediainfo` — multimedia metadata support
 
 ### Install dependencies
 
+For local development and full feature support:
+
 ```powershell
-python -m pip install PyQt5
 python -m pip install -r requirements.txt
+```
+
+To install as a package using `pyproject.toml`:
+
+```powershell
+python -m pip install .
 ```
 
 ### Launching FileForge
@@ -101,6 +114,12 @@ From the repository root:
 
 ```powershell
 python main.py
+```
+
+Or, after installing the package:
+
+```powershell
+fileforge
 ```
 
 ## Supported Platforms
