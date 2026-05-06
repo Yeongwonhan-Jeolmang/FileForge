@@ -1,118 +1,101 @@
 # FileForge
 
-FileForge is an advanced desktop application for inspecting and editing file metadata, attributes, and content metadata on Windows, macOS, and Linux.
+[![Python CI](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml/badge.svg)](https://github.com/Yeongwonhan-Jeolmang/FileForge/actions/workflows/python-ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Issues](https://img.shields.io/github/issues/Yeongwonhan-Jeolmang/FileForge)](https://github.com/Yeongwonhan-Jeolmang/FileForge/issues)
 
-## Features
+FileForge is a cross-platform desktop application for exploring, editing, and validating file metadata, content metadata, and attributes.
 
-- Open any file and inspect rich metadata at a glance
-- Rename, move, copy, change extension, and toggle hidden status
-- Edit file timestamps precisely with calendar controls
-- Manage file permissions visually with bit toggles and octal mode
-- Compute MD5, SHA-1, and SHA-256 hashes with progress feedback
-- Verify hashes against pasted values
+Built with PyQt5, FileForge gives users fast access to file timestamps, permissions, hashes, audio tags, digital signatures, string extraction, and advanced file operations.
+
+## Key Features
+
+- Inspect file metadata, file type details, timestamps, permission bits, and extended attributes
+- Rename, move, copy, and change extensions with file preview support
+- Edit timestamps precisely and apply modified/accessed time updates
+- Manage permissions visually, including octal mode and platform-specific handling
+- Compute MD5, SHA-1, and SHA-256 hashes with easy verification and copy support
 - Edit audio metadata tags for supported audio formats
-- Batch rename files using plain-text or regular expressions
-- Inspect file content with a hex preview of the first 512 bytes
-- View symlink targets, EXIF/image metadata, and extended attributes
-- Compare two files with side-by-side diff view, metadata comparison, and entropy analysis
-- Inspect digital signatures for executable files (Authenticode, PGP)
-- Extract and filter printable strings from binary files
-- Calculate file entropy to assess randomness or compression potential
-- Recent files sidebar for quick reopen
+- Batch rename using plain-text replacements or regular expressions
+- Inspect binary data with a hex preview, string extraction, entropy analysis, and file comparison
+- Display Authenticode/PGP signature details and certificate validity for signed files
+- Support recent file history for quick reopen and workflow continuity
 
-## User Interface
+## User Interface Overview
 
-FileForge is built with PyQt5 and organizes functionality into the following tabs:
+FileForge organizes functionality into the following main tabs:
 
 1. **Overview**
-   - File identity, size, MIME type, kind, timestamps, permissions, and flags
-   - Displays image metadata and EXIF data when available
-   - Displays audio metadata and embedded tags when available
-   - Shows extended attributes (xattr) on supported platforms
+   - File identity, size, MIME type, kind, timestamps, permissions, flags, and metadata
+   - Image EXIF metadata and audio tag previews when available
+   - Extended attribute display on supported platforms
 
 2. **Rename / Move**
-   - Rename files within the same directory
-   - Change file extension
-   - Toggle hidden visibility
-   - Move files to a destination directory
-   - Copy files to a chosen destination path
+   - Rename files within the same directory or move them to a new location
+   - Change file extensions and toggle file hidden status
+   - Copy files to a selected destination path
 
 3. **Timestamps**
-   - Read current modified, accessed, and created timestamps
-   - Set modified or accessed timestamps independently
-   - Apply both timestamps together
-   - Touch file to set both timestamps to the current time
+   - View and edit modified, accessed, and created timestamps
+   - Apply timestamps independently or together
+   - Use quick "touch" support to set timestamps to the current time
 
 4. **Permissions**
-   - Visual permission matrix for owner/group/others
-   - Edit read/write/execute bits via toggles
-   - Apply permissions by octal string
-   - Use built-in presets like `644`, `755`, `600`, `777`, and `400`
-   - Windows support is limited to the read-only attribute
+   - Visual permission matrix for owner, group, and others
+   - Toggle read/write/execute bits and apply octal permission values
+   - Built-in presets such as `644`, `755`, `600`, `777`, and `400`
+   - Windows support for read-only attribute handling
 
 5. **Hashes**
    - Compute MD5, SHA-1, and SHA-256 hashes
-   - Copy hash values to clipboard
-   - Verify pasted hash values against computed values
+   - Copy hash values to clipboard and verify pasted hashes
 
 6. **Audio Tags**
-   - Edit common ID3/Vorbis tags such as title, artist, album, genre, year, composer, and comment
-   - Save new audio tags or delete all tags from the file
-   - Only enabled for recognized audio files
+   - Edit common ID3/Vorbis tags including title, artist, album, genre, year, composer, and comment
+   - Save updated audio tags or remove tags from a supported file
 
 7. **Batch Rename**
-   - Create a file list from selected files or an entire folder
-   - Preview filename changes before applying them
-   - Use regular expressions or literal find-and-replace
-   - Optionally uppercase, lowercase, or strip whitespace from results
+   - Create batch rename lists from selected files or entire folders
+   - Preview rename results before applying changes
+   - Use both literal replacements and regular expressions
+   - Case conversion and whitespace normalization options
 
 8. **Advanced**
-   - Truncate file contents to a specific byte length
-   - Zero file contents to 0 bytes
+   - Truncate file contents to a specified length or zero file contents
    - View a hex dump of the first 512 bytes
-   - Inspect extended attributes
-   - Display symlink target information
-   - Browse EXIF/image metadata for image files
+   - Inspect extended attributes and symlink targets
+   - Browse EXIF/image metadata for supported files
 
 9. **Signatures**
-   - Display digital signature information for signed files
-   - Verify Authenticode and PGP signatures
-   - Show certificate details and signature validity
+   - Display digital signature details for signed executable files
+   - Verify Authenticode and PGP signature validity and view certificate information
 
 10. **Strings**
     - Extract printable strings from binary files
-    - Configure minimum string length and text encoding
-    - Filter and search through extracted strings
+    - Configure minimum string length and encoding
+    - Filter and search extracted strings directly in the UI
 
 ## Installation
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.8 or later
 - PyQt5
 
-Optional features:
+Optional packages for enhanced support:
 
-- `Pillow` for image metadata and EXIF support
-- `mutagen` for audio metadata reading and writing
+- `Pillow` — image metadata and EXIF support
+- `mutagen` — audio metadata reading and writing
 
 ### Install dependencies
 
-Install the core dependency:
-
 ```powershell
 python -m pip install PyQt5
-```
-
-Install all recommended dependencies from `requirements.txt`:
-
-```powershell
 python -m pip install -r requirements.txt
 ```
 
-If you only need the core file property manager, `PyQt5` is the only hard requirement.
-
-## Running FileForge
+### Launching FileForge
 
 From the repository root:
 
@@ -126,9 +109,9 @@ python main.py
 - macOS
 - Linux
 
-> NOTE: Extended attributes are only available on Linux/macOS. Windows permission editing is limited to read-only flag behavior.
+> Note: Extended attributes are only available on Linux/macOS. On Windows, permission editing is limited to the read-only attribute.
 
-## Project Structure
+## Repository Structure
 
 - `main.py` — Application entry point
 - `modules/main_window.py` — Main window, menu, sidebar, and tab coordination
@@ -156,17 +139,16 @@ python main.py
 
 ## Notes
 
-- FileForge attempts to degrade gracefully when optional dependencies are missing.
-- Image metadata and EXIF support require `Pillow`.
-- Audio metadata support requires `mutagen`.
+- FileForge degrades gracefully when optional dependencies are missing.
+- Use `Pillow` for richer image metadata support.
+- Use `mutagen` for audio metadata editing.
+
+## Community
+
+- Report bugs and feature requests using the GitHub issue templates.
+- Review `CONTRIBUTING.md` before submitting pull requests.
+- Follow `CODE_OF_CONDUCT.md` for community behavior and collaboration.
 
 ## License
 
-FileForge is released under the MIT License. See the `LICENSE` file for details.
-
-## Credits
-
-- Hana Eun-Seo: UI and Programming
-- Florian van den Bersselaar: UI
-- Simon Roberge: UI and Programming
-- Anna Zieleman: Programming
+This project is released under the MIT License. See the `LICENSE` file for details.
