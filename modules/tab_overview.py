@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (
     QScrollArea, QFrame, QSizePolicy,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
-from PyQt5.QtCore import Qt
 from modules.file_info import FileInfo
 from modules.widgets import KVRow, SectionLabel, HSep, TagChip, kind_icon
 from modules.theme import (
@@ -17,9 +16,10 @@ from modules.theme import (
 )
 from modules.entropy_calculator import calculate_entropy, entropy_percentage, entropy_description
 
+
 class EntropyWorker(QObject):
     """Worker for calculating entropy in background thread."""
-    finished = pyqtSignal(float, float, str) # entropy, percentage, description
+    finished = pyqtSignal(float, float, str)  # entropy, percentage, description
 
     def __init__(self, file_path: str):
         super().__init__()
@@ -27,21 +27,20 @@ class EntropyWorker(QObject):
 
     def run(self):
         try:
-            entropy = calculate_entropy(self.file_path, sample_size=1_000_000) # 1MB sample kek
+            entropy = calculate_entropy(self.file_path, sample_size=1_000_000)  # 1MB sample
             entropy_pct = entropy_percentage(entropy)
             entropy_desc = entropy_description(entropy)
             self.finished.emit(entropy, entropy_pct, entropy_desc)
         except Exception:
-            # Emit default values in error
+            # Emit default values on error
             self.finished.emit(0.0, 0.0, "Error calculating entropy")
-
 
 
 class OverviewTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._entropy_card = None # Store reference to entropy card for updates
-        
+        self._entropy_card = None  # Store reference to entropy card for updates
+
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
 
@@ -184,7 +183,7 @@ class OverviewTab(QWidget):
             self._add_card(card)
 
     def _start_entropy_calculation(self, file_path: str):
-        """Start entropy calculation in background thread"""
+        """Start entropy calculation in background thread."""
         self._entropy_worker = EntropyWorker(file_path)
         self._entropy_thread = QThread()
         self._entropy_worker.moveToThread(self._entropy_thread)
@@ -204,11 +203,30 @@ class OverviewTab(QWidget):
 
     def _update_entropy_card(self, card: QWidget, entropy: float, percentage: float, description: str):
         """Update entropy card with calculated values."""
+        from PyQt5.QtWidgets import QProgressBar
+
+        if entropy < 3.0:
+            color = "#4CAF50"  # Green for low entropy
+        elif entropy < 5.0:
+            color = "#FF9800"  # Orange for medium entropy
+        else:
+            color = "#F44336"  # Red for high entropy
+
         # Find the progress bar in the card and update it
         for child in card.findChildren(QWidget):
-            if hasattr(child, 'setValue'): # QProgressBar
+            if isinstance(child, QProgressBar):
                 child.setValue(int(percentage))
                 child.setFormat(f"{entropy:.2f} bits/byte ({percentage:.1f}%)")
+                child.setStyleSheet(f"""
+                    QProgressBar {{
+                        border: 1px solid {BORDER};
+                        border-radius: 3px;
+                        text-align: center;
+                    }}
+                    QProgressBar::chunk {{
+                        background-color: {color};
+                    }}
+                """)
             elif hasattr(child, 'setText') and child.text() == "Calculating...":
                 child.setText(description)
 

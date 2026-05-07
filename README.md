@@ -5,76 +5,22 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![Issues](https://img.shields.io/github/issues/Yeongwonhan-Jeolmang/FileForge)](https://github.com/Yeongwonhan-Jeolmang/FileForge/issues)
 
-FileForge is a cross-platform desktop application for exploring, editing, and validating file metadata, content metadata, and attributes.
+FileForge is a cross-platform desktop application for inspecting, editing, and validating file metadata, attributes, and content information.
 
-Built with PyQt5, FileForge gives users fast access to file timestamps, permissions, hashes, audio tags, digital signatures, string extraction, and advanced file operations.
+Built on PyQt5, FileForge offers fast access to file timestamps, permissions, hashes, audio tags, digital signatures, string extraction, and advanced file utilities.
 
-## Key Features
+## Features
 
-- Inspect file metadata, file type details, timestamps, permission bits, and extended attributes
-- Rename, move, copy, and change extensions with file preview support
-- Edit timestamps precisely and apply modified/accessed time updates
-- Manage permissions visually, including octal mode and platform-specific handling
-- Compute MD5, SHA-1, and SHA-256 hashes with easy verification and copy support
-- Edit audio metadata tags for supported audio formats
-- Batch rename using plain-text replacements or regular expressions
-- Inspect binary data with a hex preview, string extraction, entropy analysis, and file comparison
-- Display Authenticode/PGP signature details and certificate validity for signed files
-- Support recent file history for quick reopen and workflow continuity
-
-## User Interface Overview
-
-FileForge organizes functionality into the following main tabs:
-
-1. **Overview**
-   - File identity, size, MIME type, kind, timestamps, permissions, flags, and metadata
-   - Image EXIF metadata and audio tag previews when available
-   - Extended attribute display on supported platforms
-
-2. **Rename / Move**
-   - Rename files within the same directory or move them to a new location
-   - Change file extensions and toggle file hidden status
-   - Copy files to a selected destination path
-
-3. **Timestamps**
-   - View and edit modified, accessed, and created timestamps
-   - Apply timestamps independently or together
-   - Use quick "touch" support to set timestamps to the current time
-
-4. **Permissions**
-   - Visual permission matrix for owner, group, and others
-   - Toggle read/write/execute bits and apply octal permission values
-   - Built-in presets such as `644`, `755`, `600`, `777`, and `400`
-   - Windows support for read-only attribute handling
-
-5. **Hashes**
-   - Compute MD5, SHA-1, and SHA-256 hashes
-   - Copy hash values to clipboard and verify pasted hashes
-
-6. **Audio Tags**
-   - Edit common ID3/Vorbis tags including title, artist, album, genre, year, composer, and comment
-   - Save updated audio tags or remove tags from a supported file
-
-7. **Batch Rename**
-   - Create batch rename lists from selected files or entire folders
-   - Preview rename results before applying changes
-   - Use both literal replacements and regular expressions
-   - Case conversion and whitespace normalization options
-
-8. **Advanced**
-   - Truncate file contents to a specified length or zero file contents
-   - View a hex dump of the first 512 bytes
-   - Inspect extended attributes and symlink targets
-   - Browse EXIF/image metadata for supported files
-
-9. **Signatures**
-   - Display digital signature details for signed executable files
-   - Verify Authenticode and PGP signature validity and view certificate information
-
-10. **Strings**
-    - Extract printable strings from binary files
-    - Configure minimum string length and encoding
-    - Filter and search extracted strings directly in the UI
+- Inspect file metadata, file type details, timestamps, permissions, flags, and extended attributes
+- Rename, move, copy, and change extensions with path preview support
+- Edit modified, accessed, and created timestamps independently
+- Manage permissions with visual controls and octal mode values
+- Compute MD5, SHA-1, and SHA-256 hashes with copy/verify support
+- Read and write audio metadata tags for supported audio files
+- Batch rename files using literal replacements or regular expressions
+- Preview binary content with hex dumps, string extraction, entropy analysis, and comparison
+- View Authenticode and PGP signature details for signed files
+- Keep recent files available for quick reopening
 
 ## Installation
 
@@ -83,10 +29,12 @@ FileForge organizes functionality into the following main tabs:
 - Python 3.8 or later
 - PyQt5
 
-Optional packages for enhanced format support:
+### Optional dependencies
+
+The repository includes optional packages for richer metadata support:
 
 - `Pillow` — image metadata and EXIF support
-- `mutagen` — audio metadata reading and writing
+- `mutagen` — audio metadata editing
 - `PyPDF2` — PDF metadata support
 - `python-docx` — Word document metadata support
 - `python-pptx` — PowerPoint metadata support
@@ -102,13 +50,13 @@ For local development and full feature support:
 python -m pip install -r requirements.txt
 ```
 
-To install as a package using `pyproject.toml`:
+To install the package from this repository:
 
 ```powershell
 python -m pip install .
 ```
 
-### Launching FileForge
+### Launch FileForge
 
 From the repository root:
 
@@ -130,44 +78,58 @@ fileforge
 
 > Note: Extended attributes are only available on Linux/macOS. On Windows, permission editing is limited to the read-only attribute.
 
+## Application Overview
+
+FileForge organizes functionality into dedicated tabs for common file tasks:
+
+- **Overview** — metadata, timestamps, permissions, MIME type, and embedded EXIF/audio metadata
+- **Rename / Move** — rename, move, copy, extension changes, and hidden file toggles
+- **Timestamps** — inspect and edit modified, accessed, and created times
+- **Permissions** — visual permission matrix, owner/group/other bits, and preset modes
+- **Hashes** — compute and verify MD5, SHA-1, and SHA-256
+- **Audio Tags** — edit ID3/Vorbis audio tags and save changes
+- **Batch Rename** — preview batch rename operations, including regex and case conversion
+- **Advanced** — hex preview, truncate file contents, metadata inspection, and extended attributes
+- **Signatures** — view digital signature and certificate details
+- **Strings** — extract printable strings and filter results
+
 ## Repository Structure
 
-- `main.py` — Application entry point
-- `modules/main_window.py` — Main window, menu, sidebar, and tab coordination
-- `modules/file_info.py` — File metadata extraction and classification
-- `modules/file_ops.py` — File operations, timestamp editing, permissions, hashing, audio tag writing, and batch rename
-- `modules/sidebar.py` — Recent file selector and sidebar navigation
-- `modules/tab_overview.py` — Overview metadata display
-- `modules/tab_rename.py` — Rename/move/copy/visibility controls
-- `modules/tab_timestamps.py` — Timestamp editing UI
-- `modules/tab_permissions.py` — Permissions editor UI
-- `modules/tab_hashes.py` — Hash computation and verification UI
-- `modules/tab_audio.py` — Audio tag editing UI
-- `modules/tab_batch.py` — Batch rename UI
-- `modules/tab_advanced.py` — Advanced file operations and metadata viewers
-- `modules/tab_signatures.py` — Digital signature inspection UI
-- `modules/tab_strings.py` — String extraction and display UI
-- `modules/comparison_dialog.py` — File comparison dialog
-- `modules/entropy_calculator.py` — File entropy calculation utilities
-- `modules/file_watcher.py` — File change monitoring
-- `modules/settings_dialog.py` — Application settings dialog
-- `modules/signature_inspector.py` — Digital signature inspection utilities
-- `modules/strings_extractor.py` — String extraction utilities
+- `main.py` — application entry point
+- `modules/main_window.py` — main window and tab coordination
+- `modules/file_info.py` — file metadata extraction and classification
+- `modules/file_ops.py` — file operations, timestamps, permissions, hashing, and tag editing
+- `modules/sidebar.py` — recent file list and sidebar navigation
+- `modules/tab_overview.py` — overview metadata display
+- `modules/tab_rename.py` — rename/move/copy UI
+- `modules/tab_timestamps.py` — timestamp editing UI
+- `modules/tab_permissions.py` — permission editor UI
+- `modules/tab_hashes.py` — hash computation UI
+- `modules/tab_audio.py` — audio tag editor UI
+- `modules/tab_batch.py` — batch rename UI
+- `modules/tab_advanced.py` — advanced file utilities and viewers
+- `modules/tab_signatures.py` — signature inspection UI
+- `modules/tab_strings.py` — string extraction UI
+- `modules/comparison_dialog.py` — file comparison dialog
+- `modules/entropy_calculator.py` — entropy calculation utilities
+- `modules/file_watcher.py` — file change monitoring
+- `modules/settings_dialog.py` — settings dialog
+- `modules/signature_inspector.py` — signature inspection utilities
+- `modules/strings_extractor.py` — string extraction utilities
 - `modules/theme.py` — UI styling constants
-- `modules/widgets.py` — Reusable custom widgets and controls
+- `modules/widgets.py` — reusable controls and widgets
 
 ## Notes
 
-- FileForge degrades gracefully when optional dependencies are missing.
-- Use `Pillow` for richer image metadata support.
-- Use `mutagen` for audio metadata editing.
+- FileForge degrades gracefully when optional dependencies are unavailable.
+- Optional packages unlock additional format and metadata capabilities.
 
-## Community
+## Contributing
 
-- Report bugs and feature requests using the GitHub issue templates.
+- Report bugs and feature requests via GitHub issues.
 - Review `CONTRIBUTING.md` before submitting pull requests.
-- Follow `CODE_OF_CONDUCT.md` for community behavior and collaboration.
+- Follow `CODE_OF_CONDUCT.md` for community guidelines.
 
 ## License
 
-This project is released under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See `LICENSE` for details.
