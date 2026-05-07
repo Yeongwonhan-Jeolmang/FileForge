@@ -6,7 +6,9 @@ from __future__ import annotations
 import math
 import os
 from collections import Counter
+from modules.metadata_cache import cached_entropy
 
+@cached_entropy
 def calculate_entropy(file_path: str, sample_size: int = None) -> float:
     """
     Calculate Shannon entropy of a file.
@@ -26,16 +28,23 @@ def calculate_entropy(file_path: str, sample_size: int = None) -> float:
         # Read the file or a sample
         with open(file_path, 'rb') as f:
             if sample_size and file_size > sample_size:
-                # Sample evenly distributed chunks
-                chunk_size = min(8192, sample_size // 10)
+                # Sample from start, middle, and end for better distribution
                 data = b''
-                step = file_size // 10
-                for i in range(0, file_size, step):
-                    f.seek(i)
-                    data += f.read(chunk_size)
-                    if len(data) >= sample_size:
-                        data = data[:sample_size]
-                        break
+                sample_chunk = sample_size // 3
+
+                # Start
+                data += f.read(sample_chunk)
+
+                # Middle
+                f.seek(file_size // 2)
+                data += f.read(sample_chunk)
+
+                # End
+                f.seek(max(0, file_size - sample_chunk))
+                data += f.read(sample_chunk)
+
+                # Trim to exact sample size
+                data = data[:sample_size]
             else:
                 data = f.read()
         

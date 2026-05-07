@@ -11,6 +11,8 @@ import mimetypes
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from modules.metadata_cache import cached_hash
 
 from modules.file_info import human_size
 
@@ -36,7 +38,8 @@ def _classify_path(path: str) -> str:
     return 'other'
 
 
-def _sha256(path: str) -> str:
+@cached_hash
+def _sha256(path: str, hash_type: str = 'sha256') -> str:
     h = hashlib.sha256()
     with open(path, 'rb') as f:
         while chunk := f.read(65536):
@@ -93,7 +96,7 @@ def scan_folder(folder: str) -> dict[str, Any]:
     return summary
 
 
-def find_duplicates(folder: str, min_size: int = 1) -> list[dict[str, Any]]:
+def find_duplicates(folder: str, min_size: int = 1, max_workers: int = 4) -> list[dict[str, Any]]:
     """Find duplicate files in a folder by size and SHA-256 hash."""
     size_map: dict[int, list[str]] = defaultdict(list)
     for dirpath, dirnames, filenames in os.walk(folder):
@@ -108,26 +111,50 @@ def find_duplicates(folder: str, min_size: int = 1) -> list[dict[str, Any]]:
             size_map[size].append(path)
 
     duplicates: list[dict[str, Any]] = []
-    for size, paths in size_map.items():
-        if len(paths) < 2:
-            continue
-        hash_map: dict[str, list[str]] = defaultdict(list)
-        for path in paths:
-            try:
-                digest = _sha256(path)
-                hash_map[digest].append(path)
-            except (OSError, PermissionError):
+
+    # Parallel hash computation for size groups with >1 file
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for size, paths in size_map.items():
+            if len(paths) < 2:
                 continue
-        for digest, group in hash_map.items():
-            if len(group) > 1:
-                duplicates.append({
-                    'hash': digest,
-                    'size': size,
-                    'size_human': human_size(size),
-                    'files': sorted(group),
-                })
+
+            # Submit hash jobs
+            hash_futures = {executor.submit(_sha256_safe, path): path for path in paths}
+            hash_map: dict[str, list[str]] = defaultdict(list)
+
+            # Collect results
+            for future in as_completed(hash_futures):
+                path = hash_futures[future]
+                try:
+                    digest = future.result()
+                    hash_map[digest].append(path)
+                except Exception:
+                    continue
+
+            # Extract duplicates
+            for digest, group in hash_map.items():
+                if len(group) > 1:
+                    duplicates.append({
+                        'hash': digest,
+                        'size': size,
+                        'size_human': human_size(size),
+                        'files': sorted(group),
+                    })
+
     duplicates.sort(key=lambda item: (-item['size'], len(item['files'])))
     return duplicates
+
+
+def _sha256_safe(path: str) -> str:
+    """SHA256 with proper error handling."""
+    try:
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            while chunk := f.read(65536):
+                h.update(chunk)
+        return h.hexdigest()
+    except (OSError, PermissionError):
+        raise
 
 
 def export_report_json(report: dict[str, Any], output_path: str) -> tuple[bool, str]:

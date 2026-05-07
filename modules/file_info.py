@@ -8,6 +8,9 @@ import os
 import stat
 import time
 import platform
+import logging
+
+logger = logging.getLogger(__name__)
 import hashlib
 import mimetypes
 from dataclasses import dataclass, field
@@ -246,6 +249,7 @@ def _image_meta(path: str) -> Optional[ImageMetadata]:
 
 def _audio_meta(path: str) -> Optional[AudioMetadata]:
     if not HAS_MUTAGEN:
+        logger.debug("Mutagen not installed, skipping audio metadata")
         return None
     try:
         mf = MutagenFile(path, easy=True)
@@ -263,7 +267,8 @@ def _audio_meta(path: str) -> Optional[AudioMetadata]:
             channels    = getattr(info, "channels", None),
             tags        = tags,
         )
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to read audio metadata from {path}: {e}")
         return None
 
 
@@ -353,13 +358,22 @@ def _video_meta(path: str) -> Optional[VideoMetadata]:
 
 
 def _windows_ads(path: str) -> dict:
+    """Get NTFS Alternate Data Streams using subprocess (only for large files)."""
     if platform.system() != 'Windows':
         return {}
+
     try:
+        # Only check ADS for files larger than 1MB to avoid overhead
+        file_size = os.path.getsize(path)
+        if file_size < 1_000_000:  # 1MB threshold
+            return {}
+
         import subprocess
-        output = subprocess.check_output(['cmd.exe', '/c', 'dir', '/r', str(Path(path))], stderr=subprocess.DEVNULL, text=True)
+        # Use timeout to prevent hanging
+        result = subprocess.run(['cmd.exe', '/c', 'dir', '/r', str(Path(path))],
+                              capture_output=True, text=True, timeout=5.0)
         ads = {}
-        for line in output.splitlines():
+        for line in result.stdout.splitlines():
             if ':$DATA' in line and 'Directory of' not in line and line.strip():
                 parts = line.split()
                 if parts and parts[0].isdigit():
@@ -367,7 +381,7 @@ def _windows_ads(path: str) -> dict:
                     stream = parts[-1]
                     ads[stream] = size
         return ads
-    except Exception:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
         return {}
 
 

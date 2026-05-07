@@ -122,14 +122,30 @@ class PreviewTab(QWidget):
         label = QLabel()
         label.setAlignment(Qt.AlignCenter)
         try:
-            pixmap = QPixmap(info.path)
-            if not pixmap.isNull():
-                pixmap = pixmap.scaledToWidth(560, Qt.SmoothTransformation)
+            # Use PIL for efficient thumbnail loading
+            from PIL import Image
+            from PIL.ImageQt import ImageQt
+
+            with Image.open(info.path) as img:
+                # Create thumbnail at preview size first
+                img.thumbnail((560, 560), Image.Resampling.LANCZOS)
+                qt_image = ImageQt(img)
+                pixmap = QPixmap.fromImage(qt_image)
                 label.setPixmap(pixmap)
-            else:
+        except ImportError:
+            # Fallback to original method if PIL not available
+            try:
+                pixmap = QPixmap(info.path)
+                if not pixmap.isNull():
+                    pixmap = pixmap.scaledToWidth(560, Qt.SmoothTransformation)
+                    label.setPixmap(pixmap)
+                else:
+                    label.setText('Unable to render image preview.')
+            except Exception:
                 label.setText('Unable to render image preview.')
         except Exception:
             label.setText('Unable to render image preview.')
+            
         label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
         return label
 
