@@ -70,6 +70,19 @@ class SignaturesTab(QWidget):
         self._banner = StatusBanner()
         outer.addWidget(self._banner)
 
+        body = QWidget()
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(24, 20, 24, 20)
+        body_layout.setSpacing(12)
+        outer.addWidget(body, 1)
+
+        body_layout.addWidget(SectionLabel("Digital Signatures"))
+        intro = QLabel("Checks embedded code signatures (Windows Authenticode, Apple codesign) and "
+                       "detached PGP/GPG signatures (<file>.sig / .asc next to the file).")
+        intro.setWordWrap(True)
+        intro.setStyleSheet(f"color: {TEXT_SECONDARY};")
+        body_layout.addWidget(intro)
+
         # Inspect button
         button_layout = QHBoxLayout()
         self._inspect_btn = QPushButton("Inspect Signatures")
@@ -77,19 +90,20 @@ class SignaturesTab(QWidget):
         self._inspect_btn.clicked.connect(self._inspect_signatures)
         button_layout.addWidget(self._inspect_btn)
         button_layout.addStretch()
-        outer.addLayout(button_layout)
+        body_layout.addLayout(button_layout)
 
         # Progress bar
         self._progress = QProgressBar()
+        self._progress.setFixedHeight(6)
+        self._progress.setTextVisible(False)
         self._progress.setVisible(False)
-        outer.addWidget(self._progress)
+        body_layout.addWidget(self._progress)
 
         # Results area
         self._results_text = QTextEdit()
         self._results_text.setReadOnly(True)
-        self._results_text.setFontFamily("Consolas")
-        self._results_text.setFontPointSize(9)
-        outer.addWidget(self._results_text)
+        self._results_text.setPlaceholderText("Click “Inspect Signatures” to check this file.")
+        body_layout.addWidget(self._results_text, 1)
 
         self._set_enabled(False)
 
@@ -110,7 +124,7 @@ class SignaturesTab(QWidget):
     # ── Slots ─────────────────────────────────────────────────────────
 
     def _inspect_signatures(self):
-        if not self._info:
+        if not self._info or self._thread is not None:
             return
 
         self._inspect_btn.setEnabled(False)
@@ -128,12 +142,25 @@ class SignaturesTab(QWidget):
         worker.finished.connect(thread.quit)
         worker.error.connect(lambda e: self._banner.show_message(e, "error"))
         worker.error.connect(thread.quit)
-        thread.finished.connect(lambda: self._inspect_btn.setEnabled(True))
+        thread.finished.connect(lambda: self._inspect_btn.setEnabled(self._info is not None))
         thread.finished.connect(lambda: self._progress.setVisible(False))
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._on_thread_finished)
 
         self._worker = worker
         self._thread = thread
         thread.start()
+
+    def _on_thread_finished(self):
+        if self._thread is not None:
+            self._thread.deleteLater()
+        self._thread = None
+        self._worker = None
+
+    def shutdown(self):
+        if self._thread is not None:
+            self._thread.quit()
+            self._thread.wait(3000)
 
     def _on_signature_inspected(self, sig_info: SignatureInfo):
         self._current_sig_info = sig_info

@@ -4,21 +4,23 @@ tab_advanced.py — Advanced operations: truncate, zero, extended attributes,
 """
 
 from __future__ import annotations
+import os
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QLineEdit, QScrollArea,
     QSpinBox, QTreeWidget, QTreeWidgetItem,
     QMessageBox, QAbstractItemView, QTextEdit,
-    QSplitter,
+    QSplitter, QPlainTextEdit, QComboBox, QHeaderView,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor, QFontDatabase
 
 from modules.file_info import FileInfo
 from modules.file_ops import truncate_file, zero_file
-from modules.widgets import SectionLabel, StatusBanner
-from modules.theme import BG_CARD, BORDER, TEXT_MUTED, ACCENT, TEXT_SECONDARY
+from modules.widgets import SectionLabel, StatusBanner, Card
+from modules.theme import BG_CARD, BORDER, TEXT_MUTED, ACCENT, TEXT_SECONDARY, HEX_BG, HEX_FG, BG_MID
+from modules.file_info import human_size
 
 
 class AdvancedTab(QWidget):
@@ -83,24 +85,66 @@ class AdvancedTab(QWidget):
 
         layout.addWidget(content_card)
 
-        # ── Hex preview ────────────────────────────────────────────────
-        layout.addWidget(SectionLabel("Hex Preview  (first 512 bytes)"))
+        # ── Hex viewer (paged) ─────────────────────────────────────────
+        layout.addWidget(SectionLabel("Hex Viewer"))
         hex_card = self._card()
         hl = QVBoxLayout(hex_card)
-        hl.setContentsMargins(12, 8, 12, 8)
-        self._hex_view = QTextEdit()
+        hl.setContentsMargins(12, 10, 12, 10)
+        hl.setSpacing(8)
+
+        nav = QHBoxLayout()
+        nav.setSpacing(6)
+        nav.addWidget(QLabel("Offset:"))
+        self._hex_offset_edit = QLineEdit("0x0")
+        self._hex_offset_edit.setFixedWidth(130)
+        self._hex_offset_edit.setToolTip("Hex (0x1F0) or decimal (496). Press Enter to jump.")
+        self._hex_offset_edit.returnPressed.connect(self._jump_hex)
+        nav.addWidget(self._hex_offset_edit)
+        self._hex_page_combo = QComboBox()
+        for size in (256, 512, 1024, 4096, 16384):
+            self._hex_page_combo.addItem(f"{size:,} bytes", size)
+        self._hex_page_combo.setCurrentIndex(2)
+        self._hex_page_combo.currentIndexChanged.connect(lambda _: self._load_hex())
+        self._hex_page_combo.setMinimumWidth(110)
+        nav.addWidget(self._hex_page_combo)
+        self._hex_first = QPushButton("«")
+        self._hex_prev = QPushButton("◀ Prev")
+        self._hex_next = QPushButton("Next ▶")
+        self._hex_last = QPushButton("»")
+        self._hex_first.setToolTip("Start of file")
+        self._hex_last.setToolTip("End of file")
+        self._hex_first.clicked.connect(lambda: self._goto_hex(0))
+        self._hex_prev.clicked.connect(lambda: self._goto_hex(self._hex_offset - self._page_size()))
+        self._hex_next.clicked.connect(lambda: self._goto_hex(self._hex_offset + self._page_size()))
+        self._hex_last.clicked.connect(lambda: self._goto_hex(self._last_page_offset()))
+        for b in (self._hex_first, self._hex_prev, self._hex_next, self._hex_last):
+            nav.addWidget(b)
+        nav.addStretch()
+        self._hex_pos_lbl = QLabel("")
+        self._hex_pos_lbl.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
+        nav.addWidget(self._hex_pos_lbl)
+        hl.addLayout(nav)
+
+        self._hex_view = QPlainTextEdit()
         self._hex_view.setReadOnly(True)
-        self._hex_view.setFont(QFont("Courier New", 10))
-        self._hex_view.setFixedHeight(180)
+        self._hex_view.setLineWrapMode(QPlainTextEdit.NoWrap)
+        mono = QFontDatabase.systemFont(QFontDatabase.FixedFont)
+        mono.setPointSize(10)
+        self._hex_view.setFont(mono)
+        self._hex_view.setMinimumHeight(300)
         self._hex_view.setStyleSheet(
-            f"background: #0d0f12; color: #a0ffb0; border: none;"
+            f"QPlainTextEdit {{ background: {HEX_BG}; color: {HEX_FG}; border: 1px solid {BORDER};"
+            f"border-radius: 6px; padding: 8px; font-family: monospace; }}"
         )
         self._hex_view.setPlaceholderText("Load a file to see hex preview…")
         hl.addWidget(self._hex_view)
 
         refresh_hex = QPushButton("Refresh Hex")
         refresh_hex.clicked.connect(self._load_hex)
-        hl.addWidget(refresh_hex)
+        hl.addWidget(refresh_hex, 0, Qt.AlignRight)
+        self._hex_offset = 0
+        self._hex_nav = [self._hex_offset_edit, self._hex_page_combo, self._hex_first,
+                         self._hex_prev, self._hex_next, self._hex_last, refresh_hex]
         layout.addWidget(hex_card)
 
         # ── Extended attributes ────────────────────────────────────────
@@ -114,7 +158,9 @@ class AdvancedTab(QWidget):
         self._xattr_tree.setColumnCount(2)
         self._xattr_tree.setHeaderLabels(["Name", "Value"])
         self._xattr_tree.setAlternatingRowColors(True)
-        self._xattr_tree.setFixedHeight(140)
+        self._xattr_tree.setMinimumHeight(120)
+        self._xattr_tree.setRootIsDecorated(False)
+        self._xattr_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self._xattr_tree.setSelectionMode(QAbstractItemView.SingleSelection)
         xl.addWidget(self._xattr_tree)
 
@@ -143,20 +189,23 @@ class AdvancedTab(QWidget):
         self._exif_tree.setColumnCount(2)
         self._exif_tree.setHeaderLabels(["Tag", "Value"])
         self._exif_tree.setAlternatingRowColors(True)
-        self._exif_tree.setFixedHeight(180)
+        self._exif_tree.setMinimumHeight(200)
+        self._exif_tree.setRootIsDecorated(False)
+        self._exif_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         el.addWidget(self._exif_tree)
         layout.addWidget(exif_card)
 
         layout.addStretch()
 
-        self._editable = [self._trunc_btn, self._trunc_spin, self._zero_btn]
+        self._editable = [self._trunc_btn, self._trunc_spin, self._zero_btn] + self._hex_nav
         self._set_enabled(False)
 
     # ── Public ─────────────────────────────────────────────────────────
 
     def load(self, info: FileInfo):
         self._info = info
-        self._trunc_spin.setValue(info.size)
+        self._trunc_spin.setValue(min(info.size, self._trunc_spin.maximum()))
+        self._hex_offset = 0
         self._load_hex()
         self._load_xattrs(info)
         self._load_symlink(info)
@@ -166,6 +215,8 @@ class AdvancedTab(QWidget):
     def clear(self):
         self._info = None
         self._hex_view.clear()
+        self._hex_pos_lbl.setText("")
+        self._hex_offset = 0
         self._xattr_tree.clear()
         self._exif_tree.clear()
         self._sym_lbl.setText("—")
@@ -200,18 +251,62 @@ class AdvancedTab(QWidget):
         if ok:
             self.file_changed.emit(self._info.path)
 
+    def _page_size(self) -> int:
+        return int(self._hex_page_combo.currentData() or 1024)
+
+    def _last_page_offset(self) -> int:
+        if not self._info:
+            return 0
+        page = self._page_size()
+        size = self._file_size()
+        return max(0, ((size - 1) // page) * page) if size else 0
+
+    def _file_size(self) -> int:
+        try:
+            return os.path.getsize(self._info.path) if self._info else 0
+        except OSError:
+            return self._info.size if self._info else 0
+
+    def _goto_hex(self, offset: int):
+        self._hex_offset = max(0, min(offset, self._last_page_offset()))
+        self._load_hex()
+
+    def _jump_hex(self):
+        text = self._hex_offset_edit.text().strip().lower().replace("_", "")
+        try:
+            offset = int(text, 16) if text.startswith("0x") else int(text)
+        except ValueError:
+            self._banner.show_message(f"Invalid offset: '{text}'", "warning")
+            return
+        # Align to 16 so columns stay readable
+        self._goto_hex(offset - offset % 16)
+
     def _load_hex(self):
         if not self._info: return
+        page = self._page_size()
         try:
             with open(self._info.path, "rb") as f:
-                data = f.read(512)
+                f.seek(self._hex_offset)
+                data = f.read(page)
+            size = self._file_size()
+            width = max(8, len(f"{size:X}"))
             lines = []
             for i in range(0, len(data), 16):
                 chunk = data[i:i + 16]
-                hex_part = " ".join(f"{b:02X}" for b in chunk)
+                hex_bytes = [f"{b:02X}" for b in chunk]
+                # Gap after 8 bytes, like xxd / hexdump -C
+                hex_part = " ".join(hex_bytes[:8]) + "  " + " ".join(hex_bytes[8:])
                 asc_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
-                lines.append(f"{i:04X}  {hex_part:<47}  {asc_part}")
-            self._hex_view.setPlainText("\n".join(lines))
+                lines.append(f"{self._hex_offset + i:0{width}X}  {hex_part:<48}  |{asc_part}|")
+            self._hex_view.setPlainText("\n".join(lines) if lines else "(end of file)")
+            end = self._hex_offset + len(data)
+            self._hex_offset_edit.setText(f"0x{self._hex_offset:X}")
+            self._hex_pos_lbl.setText(
+                f"0x{self._hex_offset:X}–0x{max(end - 1, 0):X}  of  {size:,} bytes ({human_size(size)})")
+            self._hex_prev.setEnabled(self._hex_offset > 0)
+            self._hex_first.setEnabled(self._hex_offset > 0)
+            self._hex_next.setEnabled(end < size)
+            self._hex_last.setEnabled(end < size)
         except Exception as e:
             self._hex_view.setPlainText(f"Error: {e}")
 
@@ -222,12 +317,11 @@ class AdvancedTab(QWidget):
             self._xattr_tree.addTopLevelItem(item)
         if not info.xattrs:
             item = QTreeWidgetItem(["(none)", ""])
-            item.setForeground(0, __import__("PyQt5.QtGui", fromlist=["QColor"]).QColor(TEXT_MUTED))
+            item.setForeground(0, QColor(TEXT_MUTED))
             self._xattr_tree.addTopLevelItem(item)
 
     def _load_symlink(self, info: FileInfo):
         if info.is_symlink:
-            import os
             try:
                 target = os.readlink(info.path)
                 self._sym_lbl.setText(target)
@@ -243,7 +337,6 @@ class AdvancedTab(QWidget):
                 item = QTreeWidgetItem([tag, str(val)[:120]])
                 self._exif_tree.addTopLevelItem(item)
         else:
-            from PyQt5.QtGui import QColor
             item = QTreeWidgetItem(["(no EXIF data)", ""])
             item.setForeground(0, QColor(TEXT_MUTED))
             self._exif_tree.addTopLevelItem(item)
@@ -256,8 +349,4 @@ class AdvancedTab(QWidget):
 
     @staticmethod
     def _card() -> QFrame:
-        f = QFrame()
-        f.setStyleSheet(
-            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 6px; }}"
-        )
-        return f
+        return Card()

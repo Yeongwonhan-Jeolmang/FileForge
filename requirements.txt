@@ -1,7 +1,7 @@
-PyQt5
-Pillow
+PyQt5>=5.15
+Pillow>=9.1
 mutagen
-PyPDF2
+pypdf>=3.0
 python-docx
 python-pptx
 openpyxl

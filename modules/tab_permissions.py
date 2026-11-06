@@ -9,11 +9,12 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QLineEdit, QScrollArea, QGridLayout,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
+from PyQt5.QtGui import QRegExpValidator
 
 from modules.file_info import FileInfo, PermissionInfo
 from modules.file_ops import set_permissions_bits, set_permissions_octal
-from modules.widgets import SectionLabel, PermToggle, StatusBanner
+from modules.widgets import SectionLabel, PermToggle, StatusBanner, Card
 from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
 
 
@@ -116,14 +117,21 @@ class PermissionsTab(QWidget):
         self._octal_cur = QLabel("—")
         self._octal_cur.setStyleSheet(f"color: {ACCENT}; font-size: 16px; font-weight: bold;")
         self._octal_cur.setFixedWidth(80)
+        self._symbolic_lbl = QLabel("")
+        self._symbolic_lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; letter-spacing: 1px;")
+        self._symbolic_lbl.setToolTip("Symbolic form of the mode being edited")
 
         sep = QLabel("|")
         sep.setStyleSheet(f"color: {BORDER};")
 
         self._octal_edit = QLineEdit()
         self._octal_edit.setPlaceholderText("0755")
-        self._octal_edit.setFixedWidth(80)
+        self._octal_edit.setFixedWidth(90)
+        # Up to 4 octal digits (setuid/setgid/sticky + rwx×3). The old max length of 4
+        # silently truncated values like "0o644" to "0o64" → wrong permissions applied.
         self._octal_edit.setMaxLength(4)
+        self._octal_edit.setValidator(QRegExpValidator(QRegExp("[0-7]{1,4}"), self._octal_edit))
+        self._octal_edit.returnPressed.connect(self._apply_octal)
 
         apply_oct = QPushButton("Apply Octal")
         apply_oct.setObjectName("primary")
@@ -135,6 +143,8 @@ class PermissionsTab(QWidget):
         ol.addWidget(QLabel("Set:"))
         ol.addWidget(self._octal_edit)
         ol.addWidget(apply_oct)
+        ol.addSpacing(12)
+        ol.addWidget(self._symbolic_lbl)
         ol.addStretch()
         layout.addWidget(oct_card)
 
@@ -173,7 +183,8 @@ class PermissionsTab(QWidget):
         self._info = info
         perm = info.permissions
         self._load_from_perm(perm)
-        self._octal_cur.setText(perm.octal)
+        self._octal_cur.setText(f"{int(perm.octal, 8):04o}")
+        self._on_toggle_changed()
         self._set_enabled(True)
 
     def clear(self):
@@ -197,11 +208,30 @@ class PermissionsTab(QWidget):
         for k, v in bits.items():
             if v:
                 mode |= mapping[k]
-        self._octal_edit.setText(oct(mode))
+        # Preserve setuid/setgid/sticky bits from the file, which the toggles don't cover
+        if self._info:
+            try:
+                mode |= int(self._info.permissions.octal, 8) & 0o7000
+            except ValueError:
+                pass
+        self._octal_edit.setText(f"{mode:04o}")
+        self._update_preview(mode)
+
+    def _confirm_lockout(self) -> bool:
+        from PyQt5.QtWidgets import QMessageBox
+        reply = QMessageBox.warning(
+            self, "Remove owner read access?",
+            "These permissions remove read access for the file's owner (you).\n"
+            "You may no longer be able to open the file. Continue?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        return reply == QMessageBox.Yes
 
     def _apply_bits(self):
         if not self._info: return
         bits = self._read_toggles()
+        if not bits.get("owner_read") and not self._confirm_lockout():
+            return
         ok, msg = set_permissions_bits(self._info.path, **bits)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
@@ -213,15 +243,21 @@ class PermissionsTab(QWidget):
         if not octal:
             self._banner.show_message("Enter an octal value.", "warning")
             return
+        if int(octal, 8) & 0o400 == 0 and not self._confirm_lockout():
+            return
         ok, msg = set_permissions_octal(self._info.path, octal)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
-            self._octal_cur.setText(oct(int(octal, 8)))
+            self._octal_cur.setText(f"{int(octal, 8):04o}")
             self.file_changed.emit(self._info.path)
 
     def _load_preset(self, bits: dict, octal: str):
         self._load_from_bits(bits)
-        self._octal_edit.setText(octal.replace("0o", "0"))
+        self._octal_edit.setText(f"{int(octal, 8):04o}")
+
+    def _update_preview(self, mode: int):
+        import stat as _stat
+        self._symbolic_lbl.setText(_stat.filemode(_stat.S_IFREG | mode)[1:])
 
     # ── Helpers ────────────────────────────────────────────────────────
 
@@ -253,8 +289,4 @@ class PermissionsTab(QWidget):
 
     @staticmethod
     def _card() -> QFrame:
-        f = QFrame()
-        f.setStyleSheet(
-            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 6px; }}"
-        )
-        return f
+        return Card()

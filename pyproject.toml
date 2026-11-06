@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fileforge"
-version = "0.1.0"
+version = "1.2.0"
 description = "Cross-platform desktop application for inspecting and editing file metadata and file attributes."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -27,13 +27,14 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
-  "PyQt5",
-  "Pillow",
+  "PyQt5>=5.15",
+  "Pillow>=9.1",
   "mutagen",
-  "PyPDF2",
+  "pypdf>=3.0",
   "python-docx",
   "python-pptx",
   "openpyxl",
@@ -42,9 +43,18 @@ dependencies = [
 ]
 urls = { "Repository" = "https://github.com/Yeongwonhan-Jeolmang/FileForge" }
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [project.scripts]
 fileforge = "main:main"
+
+[project.gui-scripts]
+fileforge-gui = "main:main"
 
 [tool.setuptools]
 packages = ["modules"]
 py-modules = ["main"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

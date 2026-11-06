@@ -13,7 +13,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from modules.file_info import FileInfo
 from modules.file_ops import write_audio_tags, delete_audio_tags
-from modules.widgets import SectionLabel, StatusBanner
+from modules.widgets import SectionLabel, StatusBanner, Card
 from modules.theme import BG_CARD, BORDER, TEXT_SECONDARY, TEXT_MUTED, ACCENT
 
 
@@ -182,8 +182,4 @@ class AudioTab(QWidget):
 
     @staticmethod
     def _card() -> QFrame:
-        f = QFrame()
-        f.setStyleSheet(
-            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 6px; }}"
-        )
-        return f
+        return Card()

@@ -8,16 +8,20 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QScrollArea, QTextEdit,
-    QFileDialog, QTreeWidget, QTreeWidgetItem, QSplitter,
+    QPushButton, QFrame, QScrollArea, QTextEdit, QPlainTextEdit,
+    QFileDialog, QTreeWidget, QTreeWidgetItem, QSplitter, QHeaderView,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QColor
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap, QColor, QImageReader
 
 from modules.file_info import FileInfo
-from modules.archive_tools import list_archive_contents
-from modules.widgets import SectionLabel, StatusBanner
-from modules.theme import BG_CARD, BORDER, TEXT_SECONDARY, TEXT_MUTED, ACCENT
+from modules.archive_tools import list_archive_contents, archive_entry_count
+from modules.metadata_cache import get_cached_hashes
+from modules.widgets import SectionLabel, StatusBanner, Card
+from modules.theme import BG_CARD, BORDER, TEXT_SECONDARY, TEXT_MUTED, ACCENT, BG_MID
+
+ARCHIVE_PREVIEW_LIMIT = 1000
+TEXT_PREVIEW_CHARS = 200_000
 
 
 class PreviewTab(QWidget):
@@ -33,7 +37,7 @@ class PreviewTab(QWidget):
 
         top = QWidget()
         tl = QHBoxLayout(top)
-        tl.setContentsMargins(20, 16, 20, 0)
+        tl.setContentsMargins(24, 16, 24, 8)
         tl.setSpacing(10)
 
         self._path_label = QLabel('No file loaded')
@@ -70,6 +74,8 @@ class PreviewTab(QWidget):
         self._meta_tree.setColumnCount(2)
         self._meta_tree.setHeaderLabels(['Property', 'Value'])
         self._meta_tree.setAlternatingRowColors(True)
+        self._meta_tree.setRootIsDecorated(False)
+        self._meta_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         splitter.addWidget(self._meta_tree)
 
         splitter.setSizes([520, 260])
@@ -121,41 +127,57 @@ class PreviewTab(QWidget):
     def _image_preview(self, info: FileInfo) -> QWidget:
         label = QLabel()
         label.setAlignment(Qt.AlignCenter)
-        try:
-            # Use PIL for efficient thumbnail loading
-            from PIL import Image
-            from PIL.ImageQt import ImageQt
+        target = 720
+        pixmap = None
 
-            with Image.open(info.path) as img:
-                # Create thumbnail at preview size first
-                img.thumbnail((560, 560), Image.Resampling.LANCZOS)
-                qt_image = ImageQt(img)
-                pixmap = QPixmap.fromImage(qt_image)
-                label.setPixmap(pixmap)
-        except ImportError:
-            # Fallback to original method if PIL not available
+        # 1) Qt's reader can decode JPEG at reduced size (fast) and honours EXIF rotation
+        reader = QImageReader(info.path)
+        reader.setAutoTransform(True)
+        src = reader.size()
+        if src.isValid() and src.width() > 0:
+            if src.width() > target or src.height() > target:
+                reader.setScaledSize(src.scaled(QSize(target, target), Qt.KeepAspectRatio))
+            img = reader.read()
+            if not img.isNull():
+                pixmap = QPixmap.fromImage(img)
+
+        # 2) Fall back to Pillow for formats Qt lacks plugins for (CMYK, 16-bit, PSD…)
+        if pixmap is None:
             try:
-                pixmap = QPixmap(info.path)
-                if not pixmap.isNull():
-                    pixmap = pixmap.scaledToWidth(560, Qt.SmoothTransformation)
-                    label.setPixmap(pixmap)
-                else:
-                    label.setText('Unable to render image preview.')
+                from PIL import Image, ImageOps
+                from PIL.ImageQt import ImageQt
+                resample = getattr(Image, "Resampling", Image).LANCZOS
+                with Image.open(info.path) as img:
+                    img.draft("RGB", (target, target))      # cheap JPEG down-scaling
+                    img = ImageOps.exif_transpose(img)
+                    img.thumbnail((target, target), resample)
+                    if img.mode not in ("RGB", "RGBA"):
+                        img = img.convert("RGBA")
+                    pixmap = QPixmap.fromImage(ImageQt(img).copy())
             except Exception:
-                label.setText('Unable to render image preview.')
-        except Exception:
+                pixmap = None
+
+        if pixmap is not None and not pixmap.isNull():
+            label.setPixmap(pixmap)
+            if info.image_meta:
+                label.setToolTip(f"{info.image_meta.width} × {info.image_meta.height} px (shown scaled)")
+        else:
             label.setText('Unable to render image preview.')
-            
-        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
+
+        label.setStyleSheet(f'background: {BG_MID}; border: 1px solid {BORDER}; border-radius: 8px; padding: 14px;')
         return label
 
     def _text_preview(self, info: FileInfo) -> QWidget:
-        edit = QTextEdit()
+        edit = QPlainTextEdit()      # much faster than QTextEdit for large plain text
         edit.setReadOnly(True)
-        edit.setFontFamily('Consolas')
+        edit.setLineWrapMode(QPlainTextEdit.NoWrap)
+        edit.setMinimumHeight(360)
         try:
             with open(info.path, 'r', encoding='utf-8', errors='replace') as f:
-                edit.setPlainText(f.read(120_000))
+                text = f.read(TEXT_PREVIEW_CHARS)
+            if info.size > len(text.encode('utf-8', errors='replace')):
+                text += f"\n\n… preview truncated ({info.size_human} total)"
+            edit.setPlainText(text)
         except Exception as e:
             edit.setPlainText(f'Unable to load text preview: {e}')
         return edit
@@ -189,7 +211,8 @@ class PreviewTab(QWidget):
             lines.append('No detailed document preview available.')
         label = QLabel('\n'.join(lines))
         label.setWordWrap(True)
-        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
+        label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 8px; padding: 14px;')
         layout.addWidget(label)
         return widget
 
@@ -199,18 +222,39 @@ class PreviewTab(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        contents = list_archive_contents(info.path)
+        contents = list_archive_contents(info.path, limit=ARCHIVE_PREVIEW_LIMIT)
         if contents:
-            header = QLabel(f'Archive contains {len(contents)} items')
+            total = archive_entry_count(info.path)
+            files = [c for c in contents if not c.get('is_dir')]
+            uncompressed = sum(int(c['size'] or 0) for c in files)
+            shown = f"{len(contents):,}" + (f" of {total:,}" if total and total > len(contents) else
+                                            ("+" if len(contents) >= ARCHIVE_PREVIEW_LIMIT else ""))
+            ratio = ""
+            if uncompressed and info.size:
+                ratio = f"  ·  ratio {info.size / uncompressed:.0%}"
+            encrypted = any(c.get('encrypted') for c in contents)
+            header = QLabel(f'Archive contains {shown} items  ·  {len(files):,} files  ·  '
+                            f'{_human(uncompressed)} uncompressed{ratio}'
+                            + ('  ·  🔒 encrypted entries' if encrypted else ''))
             header.setStyleSheet(f'color: {TEXT_SECONDARY};')
             layout.addWidget(header)
             tree = QTreeWidget()
             tree.setColumnCount(3)
             tree.setHeaderLabels(['Name', 'Size', 'Compressed'])
             tree.setAlternatingRowColors(True)
-            for entry in contents[:200]:
-                item = QTreeWidgetItem([entry['name'], entry['size'], entry['compressed']])
-                tree.addTopLevelItem(item)
+            tree.setRootIsDecorated(False)
+            tree.setUniformRowHeights(True)
+            tree.setMinimumHeight(360)
+            tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+            items = []
+            for entry in contents:
+                icon = '📁 ' if entry.get('is_dir') else ('🔒 ' if entry.get('encrypted') else '')
+                item = QTreeWidgetItem([icon + entry['name'], entry.get('size_human', entry['size']),
+                                        entry.get('compressed_human', entry['compressed'])])
+                item.setTextAlignment(1, Qt.AlignRight | Qt.AlignVCenter)
+                item.setTextAlignment(2, Qt.AlignRight | Qt.AlignVCenter)
+                items.append(item)
+            tree.addTopLevelItems(items)
             layout.addWidget(tree)
         else:
             label = QLabel('Archive preview is unavailable for this file type or package support is missing.')
@@ -241,7 +285,7 @@ class PreviewTab(QWidget):
                     text.append(f'  • {key}: {value}')
         label = QLabel('\n'.join(text))
         label.setWordWrap(True)
-        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
+        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 8px; padding: 14px;')
         layout.addWidget(label)
         return widget
 
@@ -263,14 +307,14 @@ class PreviewTab(QWidget):
                 text.append(f'Codec: {vm.codec}')
         label = QLabel('\n'.join(text))
         label.setWordWrap(True)
-        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
+        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 8px; padding: 14px;')
         layout.addWidget(label)
         return widget
 
     def _generic_preview(self, info: FileInfo) -> QWidget:
         label = QLabel('No rich preview available for this file type. Use the Overview and Advanced tabs for more metadata.')
         label.setWordWrap(True)
-        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; padding: 14px;')
+        label.setStyleSheet(f'background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 8px; padding: 14px;')
         return label
 
     def _populate_metadata(self, info: FileInfo) -> None:
@@ -278,7 +322,15 @@ class PreviewTab(QWidget):
         self._add_meta('Name', info.name)
         self._add_meta('Kind', info.kind)
         self._add_meta('MIME Type', info.mime_type)
-        self._add_meta('Size', info.size_human)
+        self._add_meta('Size', f"{info.size_human} ({info.size:,} bytes)")
+        if info.detected_type:
+            self._add_meta('Detected Type', info.detected_type + ('  ⚠ extension mismatch' if info.extension_mismatch else ''))
+        if info.image_meta:
+            self._add_meta('Dimensions', f"{info.image_meta.width} × {info.image_meta.height} px")
+            self._add_meta('Color Mode', info.image_meta.mode)
+        if info.audio_meta and info.audio_meta.duration:
+            mins, secs = divmod(int(info.audio_meta.duration), 60)
+            self._add_meta('Duration', f"{mins}:{secs:02d}")
         if info.document_meta:
             self._add_meta('Document Type', info.document_meta.doc_type or 'Document')
             if info.document_meta.title:
@@ -304,32 +356,32 @@ class PreviewTab(QWidget):
     def _export_metadata(self):
         if not self._info:
             return
-        path, _ = QFileDialog.getSaveFileName(self, 'Export Metadata Report', filter='JSON Files (*.json)')
+        default = os.path.join(os.path.dirname(self._info.path), f"{self._info.name}.metadata.json")
+        path, _ = QFileDialog.getSaveFileName(self, 'Export Metadata Report', default, filter='JSON Files (*.json)')
         if not path:
             return
         import json
-        report = {
-            'path': self._info.path,
-            'name': self._info.name,
-            'kind': self._info.kind,
-            'mime_type': self._info.mime_type,
-            'size': self._info.size,
-            'size_human': self._info.size_human,
-            'created': self._info.created_str,
-            'modified': self._info.modified_str,
-            'accessed': self._info.accessed_str,
-            'permissions': {
-                'octal': self._info.permissions.octal,
-                'symbolic': self._info.permissions.symbolic,
-            },
-            'document_meta': self._info.document_meta.__dict__ if self._info.document_meta else None,
-            'video_meta': self._info.video_meta.__dict__ if self._info.video_meta else None,
-            'audio_meta': self._info.audio_meta.__dict__ if self._info.audio_meta else None,
-            'windows_ads': self._info.windows_ads,
-        }
+        from dataclasses import asdict
+        # Everything FileForge knows about the file, including nested metadata
+        report = asdict(self._info)
+        report['created'] = self._info.created_str
+        report['modified'] = self._info.modified_str
+        report['accessed'] = self._info.accessed_str
+        report['created_epoch'] = self._info.created
+        report['modified_epoch'] = self._info.modified
+        report['accessed_epoch'] = self._info.accessed
+        hashes = get_cached_hashes(self._info.path)
+        for algo, digest in hashes.items():
+            report[algo] = digest
+        report = {k: v for k, v in report.items() if v not in (None, '', {}, [])}
         try:
             with open(path, 'w', encoding='utf-8') as f:
-                json.dump(report, f, indent=2)
+                json.dump(report, f, indent=2, default=str, ensure_ascii=False)
             self._banner.show_message('Metadata exported successfully.', 'success')
         except Exception as e:
             self._banner.show_message(str(e), 'error')
+
+
+def _human(n: int) -> str:
+    from modules.file_info import human_size
+    return human_size(n)

@@ -13,9 +13,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QDateTime, pyqtSignal
 
 from modules.file_info import FileInfo
-from modules.file_ops import set_timestamps, touch_file
-from modules.widgets import SectionLabel, StatusBanner
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY
+from modules.file_ops import set_timestamps, touch_file, set_created_time, can_set_created_time
+from modules.widgets import SectionLabel, StatusBanner, Card
+from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
 
 
 class TimestampsTab(QWidget):
@@ -47,18 +47,27 @@ class TimestampsTab(QWidget):
         info_card = self._card()
         ic = QVBoxLayout(info_card)
 
+        ic.setContentsMargins(16, 12, 16, 12)
+        ic.setSpacing(6)
         self._cur_labels = {}
+        self._rel_labels = {}
         for key in ("Modified", "Accessed", "Created"):
             row = QHBoxLayout()
             lbl = QLabel(f"{key}:")
-            lbl.setFixedWidth(80)
+            lbl.setFixedWidth(90)
             lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px;")
             val = QLabel("—")
             val.setObjectName("value")
+            val.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            rel = QLabel("")
+            rel.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
             row.addWidget(lbl)
-            row.addWidget(val, 1)
+            row.addWidget(val)
+            row.addSpacing(10)
+            row.addWidget(rel, 1)
             ic.addLayout(row)
             self._cur_labels[key] = val
+            self._rel_labels[key] = rel
 
         layout.addWidget(info_card)
 
@@ -102,6 +111,32 @@ class TimestampsTab(QWidget):
         al.addWidget(apply_acc)
         layout.addWidget(acc_card)
 
+        # ── Edit created ──────────────────────────────────────────────
+        layout.addWidget(SectionLabel("Set Created Time"))
+        cre_card = self._card()
+        cl = QVBoxLayout(cre_card)
+        cl.setSpacing(12)
+        self._cre_dt = QDateTimeEdit()
+        self._cre_dt.setDisplayFormat("yyyy-MM-dd  HH:mm:ss")
+        self._cre_dt.setCalendarPopup(True)
+        row3 = QHBoxLayout()
+        row3.addWidget(self._cre_dt, 1)
+        copy_mod = QPushButton("Same as Modified")
+        copy_mod.clicked.connect(lambda: self._cre_dt.setDateTime(self._mod_dt.dateTime()))
+        row3.addWidget(copy_mod)
+        cl.addLayout(row3)
+        apply_cre = QPushButton("Apply Created Time")
+        apply_cre.setObjectName("primary")
+        apply_cre.clicked.connect(self._apply_created)
+        cl.addWidget(apply_cre)
+        if not can_set_created_time():
+            note = QLabel("Creation (birth) time can only be changed on Windows — "
+                          "Linux and macOS don't expose an API to set it.")
+            note.setWordWrap(True)
+            note.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
+            cl.addWidget(note)
+        layout.addWidget(cre_card)
+
         # ── Apply both ────────────────────────────────────────────────
         layout.addWidget(SectionLabel("Quick Actions"))
         quick_card = self._card()
@@ -126,6 +161,7 @@ class TimestampsTab(QWidget):
             apply_mod, apply_acc, apply_both, touch_btn,
             now_mod, now_acc,
         ]
+        self._created_widgets = [self._cre_dt, apply_cre, copy_mod]
         self._set_enabled(False)
 
     # ── Public ─────────────────────────────────────────────────────────
@@ -136,14 +172,21 @@ class TimestampsTab(QWidget):
         self._cur_labels["Accessed"].setText(info.accessed_str)
         self._cur_labels["Created"].setText(info.created_str)
 
+        self._rel_labels["Modified"].setText(_relative(info.modified))
+        self._rel_labels["Accessed"].setText(_relative(info.accessed))
+        self._rel_labels["Created"].setText(_relative(info.created))
+
         self._mod_dt.setDateTime(self._ts_to_qdt(info.modified))
         self._acc_dt.setDateTime(self._ts_to_qdt(info.accessed))
+        self._cre_dt.setDateTime(self._ts_to_qdt(info.created))
         self._set_enabled(True)
 
     def clear(self):
         self._info = None
         for v in self._cur_labels.values():
             v.setText("—")
+        for v in self._rel_labels.values():
+            v.setText("")
         self._set_enabled(False)
 
     # ── Slots ─────────────────────────────────────────────────────────
@@ -166,6 +209,14 @@ class TimestampsTab(QWidget):
         if ok:
             self._cur_labels["Accessed"].setText(
                 self._acc_dt.dateTime().toString("yyyy-MM-dd  HH:mm:ss"))
+            self.file_changed.emit(self._info.path)
+
+    def _apply_created(self):
+        if not self._info: return
+        ts = self._qdt_to_ts(self._cre_dt.dateTime())
+        ok, msg = set_created_time(self._info.path, ts)
+        self._banner.show_message(msg, "success" if ok else "error")
+        if ok:
             self.file_changed.emit(self._info.path)
 
     def _apply_both(self):
@@ -195,6 +246,8 @@ class TimestampsTab(QWidget):
     def _set_enabled(self, en: bool):
         for w in self._editable:
             w.setEnabled(en)
+        for w in self._created_widgets:
+            w.setEnabled(en and can_set_created_time())
 
     @staticmethod
     def _ts_to_qdt(ts: float) -> QDateTime:
@@ -208,8 +261,18 @@ class TimestampsTab(QWidget):
 
     @staticmethod
     def _card() -> QFrame:
-        f = QFrame()
-        f.setStyleSheet(
-            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 6px; }}"
-        )
-        return f
+        return Card()
+
+
+def _relative(ts: float) -> str:
+    """Human 'time ago' string, e.g. '3 days ago' / 'in 2 hours'."""
+    delta = time.time() - ts
+    future = delta < 0
+    delta = abs(delta)
+    for unit, secs in (("year", 31_536_000), ("month", 2_592_000), ("day", 86_400),
+                       ("hour", 3_600), ("minute", 60)):
+        if delta >= secs:
+            n = int(delta // secs)
+            text = f"{n} {unit}{'s' if n != 1 else ''}"
+            return f"in {text}" if future else f"{text} ago"
+    return "just now"

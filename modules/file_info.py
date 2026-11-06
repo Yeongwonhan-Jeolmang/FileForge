@@ -9,13 +9,19 @@ import stat
 import time
 import platform
 import logging
-
-logger = logging.getLogger(__name__)
 import hashlib
 import mimetypes
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Callable
 from pathlib import Path
+
+from modules.magic_sniffer import sniff_file, extension_mismatch
+
+logger = logging.getLogger(__name__)
+
+_IS_WINDOWS = platform.system() == "Windows"
 
 # ── Optional deps (graceful degradation) ──────────────────────────────────
 try:
@@ -29,11 +35,16 @@ try:
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
+# Prefer the maintained `pypdf`; fall back to the deprecated PyPDF2 if that's all we have
 try:
-    from PyPDF2 import PdfReader
+    from pypdf import PdfReader
     HAS_PYPDF2 = True
 except ImportError:
-    HAS_PYPDF2 = False
+    try:
+        from PyPDF2 import PdfReader
+        HAS_PYPDF2 = True
+    except ImportError:
+        HAS_PYPDF2 = False
 
 try:
     from docx import Document as DocxDocument
@@ -58,6 +69,8 @@ try:
     HAS_MEDIainfo = True
 except ImportError:
     HAS_MEDIainfo = False
+
+
 # ── Data structures ────────────────────────────────────────────────────────
 
 @dataclass
@@ -165,6 +178,11 @@ class FileInfo:
     xattrs: dict = field(default_factory=dict)
     windows_ads: dict = field(default_factory=dict)
 
+    # Content sniffing (magic bytes) — what the file *really* is
+    detected_type: str = ''
+    detected_mime: str = ''
+    extension_mismatch: bool = False
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 _SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
@@ -173,7 +191,7 @@ def human_size(n: int) -> str:
     val = float(n)
     for unit in _SIZE_UNITS:
         if val < 1024:
-            return f"{val:.2f}" if unit != "B" else f"{int(val)} B"
+            return f"{val:.2f} {unit}" if unit != "B" else f"{int(val)} B"
         val /= 1024
     return f"{val:.2f} PB"
 
@@ -197,7 +215,7 @@ def _parse_permissions(mode: int) -> PermissionInfo:
     )
 
 def _owner_group(st) -> tuple[str, str]:
-    if platform.system() == "Windows":
+    if _IS_WINDOWS:
         return "N/A", "N/A"
     try:
         import pwd, grp
@@ -207,16 +225,35 @@ def _owner_group(st) -> tuple[str, str]:
     except Exception:
         return str(getattr(st, "st_uid", "?")), str(getattr(st, "st_gid", "?"))
 
+DOCUMENT_SUFFIXES = frozenset((".doc", ".docx", ".odt", ".xls", ".xlsx", ".ppt", ".pptx",
+                               ".ods", ".odp", ".rtf", ".pdf", ".epub"))
+ARCHIVE_SUFFIXES = frozenset((".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".zst",
+                              ".tgz", ".tbz2", ".txz"))
+EXECUTABLE_SUFFIXES = frozenset((".exe", ".dll", ".so", ".dylib", ".msi", ".sys",
+                                 ".elf", ".app", ".com", ".scr", ".wasm"))
+
+
 def _classify(mime: str, suffix: str) -> str:
     if mime.startswith("image/"):         return "image"
     if mime.startswith("audio/"):         return "audio"
     if mime.startswith("video/"):         return "video"
     if mime.startswith("text/"):          return "text"
-    if "pdf" in mime or suffix in (".doc", ".docx", ".odt", ".xls", ".xlsx", ".ppt", ".pptx"):
+    if "pdf" in mime or suffix in DOCUMENT_SUFFIXES:
         return "document"
-    if suffix in (".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".zst"):
+    if suffix in ARCHIVE_SUFFIXES:
         return "archive"
+    if suffix in EXECUTABLE_SUFFIXES:
+        return "executable"
+    if mime in ("application/json", "application/xml", "application/javascript",
+                "application/x-sh", "application/x-yaml", "application/toml"):
+        return "text"
     return "other"
+
+
+def classify_path(path: str) -> str:
+    """Cheap, extension-only classification (no disk I/O). Used by list views."""
+    mime, _ = mimetypes.guess_type(path)
+    return _classify(mime or "application/octet-stream", Path(path).suffix.lower())
 
 def _image_meta(path: str) -> Optional[ImageMetadata]:
     if not HAS_PIL:
@@ -224,17 +261,29 @@ def _image_meta(path: str) -> Optional[ImageMetadata]:
     try:
         with Image.open(path) as img:
             exif_raw = {}
-            has_exif = False
-            if hasattr(img, "_getexif") and img._getexif():
-                has_exif = True
-                raw = img._getexif() or {}
+            try:
+                raw = img.getexif()
+            except Exception:
+                raw = {}
+            if raw:
                 from PIL.ExifTags import TAGS
-                for tag_id, val in raw.items():
+                # Merge the main IFD with the Exif sub-IFD (camera settings live there)
+                items = dict(raw)
+                try:
+                    items.update(raw.get_ifd(0x8769))
+                except Exception:
+                    pass
+                for tag_id, val in items.items():
+                    if tag_id in (0x8769, 0x8825):   # IFD pointers, not real values
+                        continue
                     tag = TAGS.get(tag_id, tag_id)
                     try:
+                        if isinstance(val, bytes):
+                            val = val.decode("utf-8", errors="replace").strip("\x00 ")
                         exif_raw[str(tag)] = str(val)
                     except Exception:
                         pass
+            has_exif = bool(exif_raw)
             return ImageMetadata(
                 width=img.width,
                 height=img.height,
@@ -303,10 +352,11 @@ def _document_meta(path: str, suffix: str) -> Optional[DocumentMetadata]:
         try:
             doc = DocxDocument(path)
             props = doc.core_properties
+            snippet = ' '.join(p.text for p in doc.paragraphs[:40] if p.text)[:1200]
             return DocumentMetadata(
                 doc_type='DOCX', title=props.title or '', author=props.author or '',
                 subject=props.subject or '', software=props.last_modified_by or '',
-                comment=props.comments or '', snippet='',
+                comment=props.comments or '', topic=props.keywords or '', snippet=snippet,
             )
         except Exception:
             return None
@@ -315,18 +365,28 @@ def _document_meta(path: str, suffix: str) -> Optional[DocumentMetadata]:
         try:
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True, data_only=True)
-            return DocumentMetadata(
-                doc_type='Spreadsheet', title=Path(path).name,
-                pages=len(wb.sheetnames), snippet='',
-            )
+            try:
+                props = wb.properties
+                meta = DocumentMetadata(
+                    doc_type='Spreadsheet', title=props.title or Path(path).name,
+                    author=props.creator or '', subject=props.subject or '',
+                    software=props.lastModifiedBy or '',
+                    pages=len(wb.sheetnames), snippet='Sheets: ' + ', '.join(wb.sheetnames[:20]),
+                )
+            finally:
+                wb.close()
+            return meta
         except Exception:
             return None
 
     if suffix == '.pptx' and HAS_PPTX:
         try:
             prs = Presentation(path)
+            props = prs.core_properties
             return DocumentMetadata(
-                doc_type='Presentation', title=Path(path).name,
+                doc_type='Presentation', title=props.title or Path(path).name,
+                author=props.author or '', subject=props.subject or '',
+                software=props.last_modified_by or '',
                 pages=len(prs.slides), snippet='',
             )
         except Exception:
@@ -359,7 +419,7 @@ def _video_meta(path: str) -> Optional[VideoMetadata]:
 
 def _windows_ads(path: str) -> dict:
     """Get NTFS Alternate Data Streams using subprocess (only for large files)."""
-    if platform.system() != 'Windows':
+    if not _IS_WINDOWS:
         return {}
 
     try:
@@ -368,7 +428,6 @@ def _windows_ads(path: str) -> dict:
         if file_size < 1_000_000:  # 1MB threshold
             return {}
 
-        import subprocess
         # Use timeout to prevent hanging
         result = subprocess.run(['cmd.exe', '/c', 'dir', '/r', str(Path(path))],
                               capture_output=True, text=True, timeout=5.0)
@@ -381,7 +440,7 @@ def _windows_ads(path: str) -> dict:
                     stream = parts[-1]
                     ads[stream] = size
         return ads
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
+    except (subprocess.SubprocessError, OSError, ValueError):
         return {}
 
 
@@ -407,20 +466,27 @@ def read_file_info(path: str) -> FileInfo:
     p = Path(path)
     st = p.lstat()
     mode = st.st_mode
- 
+
     mime, _ = mimetypes.guess_type(str(p))
     mime = mime or "application/octet-stream"
     suffix = p.suffix.lower()
     kind = _classify(mime, suffix)
- 
-    is_sym = p.is_symlink()
-    is_hidden = p.name.startswith(".") or (
-        platform.system() == "Windows" and bool(st.st_file_attributes & 2) if hasattr(st, "st_file_attributes") else False
-    )
- 
+
+    # Look at the actual bytes: catches renamed files and unknown extensions
+    sniffed = sniff_file(path) if p.is_file() else None
+    if sniffed and (kind == "other" or mime == "application/octet-stream"):
+        kind = sniffed.kind
+        if mime == "application/octet-stream":
+            mime = sniffed.mime
+
+    is_sym = stat.S_ISLNK(mode)
+    is_hidden = p.name.startswith(".")
+    if _IS_WINDOWS and hasattr(st, "st_file_attributes"):
+        is_hidden = is_hidden or bool(st.st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
+
     created_ts = getattr(st, "st_birthtime", st.st_ctime)
     owner, group = _owner_group(st)
- 
+
     info = FileInfo(
         path         = str(p),
         name         = p.name,
@@ -447,36 +513,75 @@ def read_file_info(path: str) -> FileInfo:
         video_meta    = _video_meta(path) if kind == "video" else None,
         xattrs        = _xattrs(path),
         windows_ads   = _windows_ads(path),
+        detected_type = sniffed.description if sniffed else '',
+        detected_mime = sniffed.mime if sniffed else '',
+        extension_mismatch = extension_mismatch(sniffed, suffix),
     )
     return info
- 
- 
-def compute_hashes(path: str, algorithms: list[str] = None, progress_cb=None) -> dict[str, str]:
-    """Compute file hashes. algorithms: list of 'md5','sha1','sha256','sha512','blake2'."""
+
+
+class HashCancelled(Exception):
+    """Raised by compute_hashes when the caller's cancel check returns True."""
+
+
+HASH_CHUNK = 1 << 20      # 1 MiB reads — far fewer syscalls / Python iterations than 64 KiB
+
+
+def _new_hasher(algo: str):
+    if algo == "blake2":
+        return hashlib.blake2b()
+    return hashlib.new(algo)
+
+
+def compute_hashes(path: str, algorithms: list[str] = None, progress_cb=None,
+                   cancel_cb: Optional[Callable[[], bool]] = None) -> dict[str, str]:
+    """
+    Compute file hashes. algorithms: list of 'md5','sha1','sha256','sha512','blake2'.
+
+    - Reads in 1 MiB chunks into a reused buffer (no per-chunk allocation).
+    - When several algorithms are requested they are updated in parallel threads;
+      hashlib releases the GIL, so this scales with CPU cores.
+    - progress_cb(done, total) is throttled to ~1% steps so a GUI thread isn't
+      flooded with thousands of cross-thread signals.
+    - cancel_cb() is polled each chunk; returning True raises HashCancelled.
+    """
     if algorithms is None:
         algorithms = ["md5", "sha1", "sha256"]
 
-    # Handle blake2 specially as it needs a constructor
-    hashers = {}
-    for a in algorithms:
-        if a == "blake2":
-            hashers[a] = hashlib.blake2b()
-        else:
-            hashers[a] = hashlib.new(a)
-
+    hashers = {a: _new_hasher(a) for a in algorithms}
     total = os.path.getsize(path)
     done = 0
-    chunk = 65536
- 
-    with open(path, "rb") as f:
-        while True:
-            data = f.read(chunk)
-            if not data:
-                break
-            for h in hashers.values():
-                h.update(data)
-            done += len(data)
-            if progress_cb:
-                progress_cb(done, total)
- 
+    step = max(total // 100, HASH_CHUNK)
+    next_report = step
+
+    buf = bytearray(HASH_CHUNK)
+    view = memoryview(buf)
+    pool = ThreadPoolExecutor(max_workers=len(hashers)) if len(hashers) > 1 and total > 4 * HASH_CHUNK else None
+
+    try:
+        with open(path, "rb", buffering=0) as f:
+            while True:
+                if cancel_cb and cancel_cb():
+                    raise HashCancelled()
+                n = f.readinto(buf)
+                if not n:
+                    break
+                chunk = view[:n]
+                if pool:
+                    # list() forces completion and re-raises any worker exception
+                    list(pool.map(lambda h: h.update(chunk), hashers.values()))
+                else:
+                    for h in hashers.values():
+                        h.update(chunk)
+                done += n
+                if progress_cb and done >= next_report:
+                    progress_cb(done, total)
+                    next_report = done + step
+    finally:
+        view.release()
+        if pool:
+            pool.shutdown(wait=True)
+
+    if progress_cb:
+        progress_cb(total, total)
     return {a: hashers[a].hexdigest() for a in algorithms}

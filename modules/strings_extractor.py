@@ -5,10 +5,12 @@ strings_extractor.py — Extract printable strings from binary files.
 from __future__ import annotations
 import os
 import re
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Optional, Callable
 
 
-def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii') -> List[Tuple[int, str]]:
+def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii',
+                    max_results: Optional[int] = None,
+                    cancel_cb: Optional[Callable[[], bool]] = None) -> List[Tuple[int, str]]:
     """
     Extract printable strings from a binary file.
 
@@ -16,6 +18,8 @@ def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii'
         file_path: Path to the file to analyze
         min_length: Minimum string length to extract
         encoding: Text encoding to use ('ascii', 'utf-8', 'utf-16', 'latin-1')
+        max_results: Stop after this many strings (None = unlimited)
+        cancel_cb: Polled periodically; returning True stops extraction early
 
     Returns:
         List of (offset, string) tuples
@@ -26,6 +30,10 @@ def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii'
         # Use streaming approach to avoid loading entire file into memory
         for offset, string in extract_strings_streaming(file_path, min_length, encoding):
             strings.append((offset, string))
+            if max_results is not None and len(strings) >= max_results:
+                break
+            if cancel_cb is not None and not (len(strings) & 0x3FF) and cancel_cb():
+                break
 
     except (OSError, IOError):
         pass
@@ -33,68 +41,87 @@ def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii'
     return strings
 
 
+def _build_pattern(encoding: str, min_length: int) -> "re.Pattern[bytes]":
+    """Compile the byte-level regex that matches a printable run for `encoding`."""
+    n = str(max(1, min_length)).encode()
+    if encoding == 'utf-8':
+        # A printable ASCII byte or a complete, well-formed multi-byte UTF-8 sequence
+        char = (b'(?:[\x20-\x7E\t]'
+                b'|[\xC2-\xDF][\x80-\xBF]'
+                b'|[\xE0-\xEF][\x80-\xBF]{2}'
+                b'|[\xF0-\xF4][\x80-\xBF]{3})')
+        return re.compile(char + b'{' + n + b',}')
+    if encoding == 'utf-16':
+        # UTF-16 LE: printable ASCII followed by a NUL high byte
+        return re.compile(b'(?:[\x20-\x7E]\x00){' + n + b',}')
+    if encoding == 'latin-1':
+        # Printable Latin-1, excluding the C1 control range 0x7F-0x9F
+        return re.compile(b'[\x20-\x7E\xA0-\xFF]{' + n + b',}')
+    # ASCII (default)
+    return re.compile(b'[\x20-\x7E]{' + n + b',}')
+
+
 def extract_strings_streaming(file_path: str, min_length: int = 4, encoding: str = 'ascii',
-                               chunk_size: int = 1_000_000) -> Iterator[Tuple[int, str]]:
+                               chunk_size: int = 1_000_000,
+                               max_string_length: int = 65_536) -> Iterator[Tuple[int, str]]:
     """
     Extract printable strings from a binary file using streaming approach.
+
+    Strings that straddle a chunk boundary are carried over to the next chunk
+    and reported exactly once, with their true file offset.
 
     Args:
         file_path: Path to the file to analyze
         min_length: Minimum string length to extract
         encoding: Text encoding to use
         chunk_size: Size of chunks to read at a time
+        max_string_length: Runs longer than this (bytes) are flushed in pieces
+                           so a huge text region can't grow the buffer forever
 
     Yields:
         (offset, string) tuples
     """
-    # Define printable characters based on encoding
-    if encoding == 'ascii':
-        # ASCII printable characters (32-126)
-        pattern = re.compile(b'[\x20-\x7E]{' + str(min_length).encode() + b',}')
-    elif encoding == 'utf-8':
-        # UTF-8 printable characters
-        pattern = re.compile(b'[\x20-\x7E\xC2-\xF4][\x80-\xBF]*{' + str(max(0, min_length-1)).encode() + b',}')
-    elif encoding == 'utf-16':
-        # UTF-16 (little endian)
-        pattern = re.compile(b'(?:[\x20-\x7E]\x00){' + str(min_length).encode() + b',}')
-    elif encoding == 'latin-1':
-        # Latin-1 printable characters
-        pattern = re.compile(b'[\x20-\xFF]{' + str(min_length).encode() + b',}')
-    else:
-        # Default to ASCII
-        pattern = re.compile(b'[\x20-\x7E]{' + str(min_length).encode() + b',}')
+    pattern = _build_pattern(encoding, min_length)
+    codec = 'utf-16-le' if encoding == 'utf-16' else ('ascii' if encoding not in ('utf-8', 'latin-1') else encoding)
+    char_width = 2 if encoding == 'utf-16' else (4 if encoding == 'utf-8' else 1)
+    # Any match starting in the last `tail` bytes might still be growing / not yet long enough
+    tail = min_length * char_width
 
-    buffer = bytearray(chunk_size + min_length)
-    overlap = bytearray()
-    file_pos = 0
+    carry = b''
+    carry_offset = 0            # file offset of carry[0]
 
     with open(file_path, 'rb') as f:
         while True:
-            bytes_read = f.readinto(buffer)
-            if not bytes_read:
+            chunk = f.read(chunk_size)
+            eof = not chunk
+            data = carry + chunk
+            base = carry_offset
+            if not data:
                 break
 
-            # Process buffer with overlap from previous chunk
-            process_data = overlap + buffer[:bytes_read]
+            cut = len(data) if eof else max(0, len(data) - tail)
+            last_end = 0
+            for match in pattern.finditer(data):
+                if not eof and match.end() == len(data) and match.end() - match.start() < max_string_length:
+                    # Run touches the end of the buffer: it may continue in the next chunk
+                    cut = min(cut, match.start())
+                    break
+                if match.start() >= cut:
+                    break
+                last_end = match.end()
+                decoded = match.group().decode(codec, errors='ignore')
+                if len(decoded) >= min_length:
+                    yield (base + match.start(), decoded)
 
-            for match in pattern.finditer(process_data):
-                try:
-                    string_bytes = match.group()
-                    if encoding == 'utf-16':
-                        # Decode UTF-16 LE
-                        decoded = string_bytes.decode('utf-16-le', errors='ignore')
-                    else:
-                        decoded = string_bytes.decode(encoding, errors='ignore')
-
-                    if len(decoded) >= min_length:
-                        offset = file_pos + match.start() - len(overlap)
-                        yield (offset, decoded)
-                except UnicodeDecodeError:
-                    continue
-
-            # Prepare overlap for next chunk
-            overlap = process_data[-(min_length-1):] if len(process_data) >= min_length else bytearray()
-            file_pos += bytes_read
+            if eof:
+                break
+            # Never re-scan bytes that belong to a string we already reported
+            cut = max(cut, last_end)
+            # UTF-16 strings must stay 2-byte aligned relative to the carry start
+            if char_width == 2 and (cut % 2):
+                cut -= 1
+            carry = data[cut:]
+            carry_offset = base + cut
 
 
 def extract_strings_with_context(file_path: str, min_length: int = 4, encoding: str = 'ascii', context_bytes: int = 16) -> List[Tuple[int, str, bytes, bytes]]:

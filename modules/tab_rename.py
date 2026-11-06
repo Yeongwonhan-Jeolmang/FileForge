@@ -5,10 +5,11 @@ tab_rename.py — Rename, move, copy, extension change, hidden toggle.
 from __future__ import annotations
 from pathlib import Path
 
+import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox,
-    QFileDialog, QScrollArea, QFrame, QSizePolicy,
+    QFileDialog, QScrollArea, QFrame, QSizePolicy, QMessageBox,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -16,9 +17,10 @@ from modules.file_info import FileInfo
 from modules.file_ops import (
     rename_file, move_file, copy_file,
     change_extension, set_hidden,
+    hidden_target_path, move_destination, extension_target_path, validate_filename,
 )
-from modules.widgets import SectionLabel, HSep, StatusBanner
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY
+from modules.widgets import SectionLabel, HSep, StatusBanner, Card
+from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED, ERROR
 
 
 class RenameTab(QWidget):
@@ -61,6 +63,12 @@ class RenameTab(QWidget):
         row.addWidget(self._rename_edit, 1)
         row.addWidget(self._rename_btn)
         gl.addLayout(row)
+        self._rename_hint = QLabel("")
+        self._rename_hint.setStyleSheet(f"color: {ERROR}; font-size: 11px;")
+        self._rename_hint.hide()
+        gl.addWidget(self._rename_hint)
+        self._rename_edit.returnPressed.connect(self._do_rename)
+        self._rename_edit.textChanged.connect(self._validate_rename)
         layout.addWidget(rename_group)
 
         # ── Extension ──────────────────────────────────────────────────
@@ -77,6 +85,7 @@ class RenameTab(QWidget):
         self._ext_btn = QPushButton("Change Extension")
         self._ext_btn.setObjectName("primary")
         self._ext_btn.clicked.connect(self._do_ext)
+        self._ext_edit.returnPressed.connect(self._do_ext)
         row2.addWidget(self._ext_edit)
         row2.addWidget(self._ext_btn)
         row2.addStretch()
@@ -104,7 +113,7 @@ class RenameTab(QWidget):
         ml = QVBoxLayout(move_group)
         ml.setSpacing(10)
 
-        ml.addWidget(QLabel("Destination directory:"))
+        ml.addWidget(QLabel("Destination directory (or full target path):"))
         row3 = QHBoxLayout()
         self._move_edit = QLineEdit()
         self._move_edit.setPlaceholderText("/path/to/destination/")
@@ -149,8 +158,11 @@ class RenameTab(QWidget):
         self._info = info
         p = Path(info.path)
         self._rename_edit.setText(p.name)
+        # Pre-select the stem so typing replaces the name but keeps the extension
+        self._rename_edit.setSelection(0, len(p.stem) if p.stem else len(p.name))
         self._ext_edit.setText(p.suffix)
         self._hidden_chk.setChecked(info.is_hidden)
+        self._copy_edit.setPlaceholderText(str(p.parent / f"{p.stem} copy{p.suffix}"))
         self._set_enabled(True)
 
     def clear(self):
@@ -160,15 +172,25 @@ class RenameTab(QWidget):
         self._hidden_chk.setChecked(False)
         self._move_edit.clear()
         self._copy_edit.clear()
+        self._copy_edit.setPlaceholderText("/path/to/copy.txt")
+        self._rename_hint.hide()
         self._set_enabled(False)
 
     # ── Slots ─────────────────────────────────────────────────────────
+
+    def _validate_rename(self, text: str):
+        err = validate_filename(text.strip()) if text.strip() else None
+        self._rename_hint.setText(err or "")
+        self._rename_hint.setVisible(bool(err))
 
     def _do_rename(self):
         if not self._info: return
         new_name = self._rename_edit.text().strip()
         if not new_name:
             self._banner.show_message("Enter a new filename.", "warning")
+            return
+        if new_name == Path(self._info.path).name:
+            self._banner.show_message("That is already the file's name.", "info", 2000)
             return
         ok, msg = rename_file(self._info.path, new_name)
         if ok:
@@ -186,9 +208,7 @@ class RenameTab(QWidget):
             return
         ok, msg = change_extension(self._info.path, ext)
         if ok:
-            p = Path(self._info.path)
-            new_ext = ext if ext.startswith(".") else "." + ext
-            new_path = str(p.with_suffix(new_ext))
+            new_path = extension_target_path(self._info.path, ext)
             self._banner.show_message(msg, "success")
             self.file_changed.emit(new_path)
         else:
@@ -196,11 +216,12 @@ class RenameTab(QWidget):
 
     def _do_hidden(self):
         if not self._info: return
+        target = hidden_target_path(self._info.path, self._hidden_chk.isChecked())
         ok, msg = set_hidden(self._info.path, self._hidden_chk.isChecked())
         if ok:
             self._banner.show_message(msg, "success")
-            # hidden toggle may rename, reload
-            self.file_changed.emit(self._info.path)
+            # On Linux/macOS hiding renames the file (leading dot) — reload the *new* path
+            self.file_changed.emit(target)
         else:
             self._banner.show_message(msg, "error")
 
@@ -210,25 +231,47 @@ class RenameTab(QWidget):
         if not dest:
             self._banner.show_message("Enter a destination directory.", "warning")
             return
-        ok, msg = move_file(self._info.path, dest)
+        dest = os.path.expanduser(dest)
+        target = move_destination(self._info.path, dest)
+        overwrite = False
+        if os.path.exists(target):
+            if not self._confirm_overwrite(target):
+                return
+            overwrite = True
+        ok, msg = move_file(self._info.path, dest, overwrite=overwrite)
         if ok:
             self._banner.show_message(msg, "success")
-            new_path = str(Path(dest) / Path(self._info.path).name)
-            self.file_changed.emit(new_path)
+            self.file_changed.emit(target)
         else:
             self._banner.show_message(msg, "error")
 
     def _do_copy(self):
         if not self._info: return
-        dest = self._copy_edit.text().strip()
+        dest = self._copy_edit.text().strip() or self._copy_edit.placeholderText()
         if not dest:
             self._banner.show_message("Enter a destination path.", "warning")
             return
-        ok, msg = copy_file(self._info.path, dest)
+        dest = os.path.expanduser(dest)
+        target = move_destination(self._info.path, dest)
+        overwrite = False
+        if os.path.exists(target) and os.path.abspath(target) != os.path.abspath(self._info.path):
+            if not self._confirm_overwrite(target):
+                return
+            overwrite = True
+        ok, msg = copy_file(self._info.path, dest, overwrite=overwrite)
         self._banner.show_message(msg, "success" if ok else "error")
 
+    def _confirm_overwrite(self, target: str) -> bool:
+        reply = QMessageBox.question(
+            self, "Replace existing file?",
+            f"'{target}' already exists.\nReplace it?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        return reply == QMessageBox.Yes
+
     def _browse_move(self):
-        d = QFileDialog.getExistingDirectory(self, "Select destination directory")
+        start = os.path.dirname(self._info.path) if self._info else ""
+        d = QFileDialog.getExistingDirectory(self, "Select destination directory", start)
         if d:
             self._move_edit.setText(d)
 
@@ -236,7 +279,7 @@ class RenameTab(QWidget):
         if not self._info: return
         p = Path(self._info.path)
         dest, _ = QFileDialog.getSaveFileName(
-            self, "Copy to…", str(p.parent / p.name)
+            self, "Copy to…", str(p.parent / f"{p.stem} copy{p.suffix}")
         )
         if dest:
             self._copy_edit.setText(dest)
@@ -256,8 +299,4 @@ class RenameTab(QWidget):
 
     @staticmethod
     def _card() -> QFrame:
-        f = QFrame()
-        f.setStyleSheet(
-            f"QFrame {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 6px; }}"
-        )
-        return f
+        return Card()
