@@ -7,7 +7,7 @@ name = "fileforge"
 version = "1.2.0"
 description = "Cross-platform desktop application for inspecting and editing file metadata and file attributes."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [ { name = "FileForge" } ]
 keywords = ["file", "metadata", "PyQt5", "desktop", "file management"]
@@ -22,8 +22,6 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
