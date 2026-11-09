@@ -7,23 +7,46 @@ app can read preferences without constructing a dialog.
 
 from __future__ import annotations
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QWidget, QLabel, QCheckBox, QComboBox, QSpinBox,
-    QPushButton, QGroupBox, QFormLayout, QDialogButtonBox,
-    QTreeWidget, QTreeWidgetItem, QHeaderView,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTabWidget,
+    QWidget,
+    QLabel,
+    QCheckBox,
+    QComboBox,
+    QSpinBox,
+    QGroupBox,
+    QFormLayout,
+    QDialogButtonBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QHeaderView,
 )
 from PyQt5.QtCore import Qt, QSettings, pyqtSignal
-from PyQt5.QtGui import QFont
 
 from modules.theme import (
-    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, ACCENT, WARNING,
-    THEME_NAMES, THEME_NAME, DEFAULT_FONT_PX,
+    WARNING,
+    THEME_NAMES,
+    THEME_NAME,
+    DEFAULT_FONT_PX,
 )
 
 
-HASH_ALGORITHMS = [("md5", "MD5"), ("sha1", "SHA-1"), ("sha256", "SHA-256"),
-                   ("sha512", "SHA-512"), ("blake2", "BLAKE2")]
-_HASH_DEFAULTS = {"md5": True, "sha1": True, "sha256": True, "sha512": False, "blake2": False}
+HASH_ALGORITHMS = [
+    ("md5", "MD5"),
+    ("sha1", "SHA-1"),
+    ("sha256", "SHA-256"),
+    ("sha512", "SHA-512"),
+    ("blake2", "BLAKE2"),
+]
+_HASH_DEFAULTS = {
+    "md5": True,
+    "sha1": True,
+    "sha256": True,
+    "sha512": False,
+    "blake2": False,
+}
 
 # (action, shortcut) — kept in one place so the Settings dialog can list them
 SHORTCUTS = [
@@ -57,8 +80,11 @@ class AppSettings:
         return self._s.value("auto_hash_on_load", False, type=bool)
 
     def default_hash_algorithms(self) -> list[str]:
-        return [a for a, _ in HASH_ALGORITHMS
-                if self._s.value(f"default_{a}", _HASH_DEFAULTS[a], type=bool)]
+        return [
+            a
+            for a, _ in HASH_ALGORITHMS
+            if self._s.value(f"default_{a}", _HASH_DEFAULTS[a], type=bool)
+        ]
 
     def remember_recent(self) -> bool:
         return self._s.value("remember_recent", True, type=bool)
@@ -77,7 +103,7 @@ class AppSettings:
     # Persisted lists
     def recent_files(self) -> list[str]:
         value = self._s.value("recent_files", [])
-        if isinstance(value, str):          # QSettings collapses 1-item lists on some platforms
+        if isinstance(value, str):  # QSettings collapses 1-item lists on some platforms
             value = [value]
         return [v for v in (value or []) if isinstance(v, str)]
 
@@ -134,7 +160,8 @@ class SettingsDialog(QDialog):
         # Buttons
         buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply,
-            Qt.Horizontal, self
+            Qt.Horizontal,
+            self,
         )
         buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
         buttons.accepted.connect(self._accept)
@@ -153,7 +180,9 @@ class SettingsDialog(QDialog):
         auto_layout = QVBoxLayout(auto_group)
 
         self._auto_refresh_chk = QCheckBox("Auto-refresh when file changes externally")
-        self._auto_refresh_chk.setToolTip("Automatically reload the current file if it's modified by another program")
+        self._auto_refresh_chk.setToolTip(
+            "Automatically reload the current file if it's modified by another program"
+        )
         auto_layout.addWidget(self._auto_refresh_chk)
 
         # Hash defaults group
@@ -170,8 +199,12 @@ class SettingsDialog(QDialog):
         row.addStretch()
         hash_layout.addLayout(row)
 
-        self._auto_hash_chk = QCheckBox("Compute hashes automatically when a file is opened")
-        self._auto_hash_chk.setToolTip("Runs in the background; large files may take a while")
+        self._auto_hash_chk = QCheckBox(
+            "Compute hashes automatically when a file is opened"
+        )
+        self._auto_hash_chk.setToolTip(
+            "Runs in the background; large files may take a while"
+        )
         hash_layout.addWidget(self._auto_hash_chk)
 
         # Kept for backwards compatibility with code that referenced these attributes
@@ -240,7 +273,9 @@ class SettingsDialog(QDialog):
 
     def _update_restart_hint(self, name: str):
         if name != THEME_NAME:
-            self._restart_hint.setText("Theme changes take effect after restarting FileForge.")
+            self._restart_hint.setText(
+                "Theme changes take effect after restarting FileForge."
+            )
         else:
             self._restart_hint.setText("")
 
@@ -266,7 +301,9 @@ class SettingsDialog(QDialog):
         for algo, chk in self._hash_chks.items():
             self._settings.setValue(f"default_{algo}", chk.isChecked())
         self._settings.setValue("auto_hash_on_load", self._auto_hash_chk.isChecked())
-        self._settings.setValue("remember_recent", self._remember_recent_chk.isChecked())
+        self._settings.setValue(
+            "remember_recent", self._remember_recent_chk.isChecked()
+        )
         self._settings.setValue("show_hidden_files", self._show_hidden_chk.isChecked())
 
         # UI settings

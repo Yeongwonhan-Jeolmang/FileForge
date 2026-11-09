@@ -26,6 +26,7 @@ def app(tmp_path_factory):
 
 def _pump(app, ms=300):
     from PyQt5.QtCore import QEventLoop, QTimer
+
     loop = QEventLoop()
     QTimer.singleShot(ms, loop.quit)
     loop.exec_()
@@ -37,6 +38,7 @@ def test_open_file_and_visit_all_tabs(app, tmp_path):
     sys.excepthook = lambda t, e, tb: errors.append(e)
     try:
         from modules.main_window import MainWindow
+
         sample = tmp_path / "sample.txt"
         sample.write_text("FileForge smoke test\n" * 50)
 

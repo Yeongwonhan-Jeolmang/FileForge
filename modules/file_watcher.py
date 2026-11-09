@@ -6,8 +6,9 @@ from __future__ import annotations
 import os
 from PyQt5.QtCore import QFileSystemWatcher, QObject, pyqtSignal, QTimer
 
+
 class FileWatcher(QObject):
-    file_changed = pyqtSignal(str) # Emitted with file path when file changes
+    file_changed = pyqtSignal(str)  # Emitted with file path when file changes
 
     DEBOUNCE_MS = 400
 
@@ -53,7 +54,9 @@ class FileWatcher(QObject):
 
     def _emit_change(self):
         if self._current_file:
-            if self._current_file not in self._watcher.files() and os.path.exists(self._current_file):
+            if self._current_file not in self._watcher.files() and os.path.exists(
+                self._current_file
+            ):
                 self._watcher.addPath(self._current_file)
             self.file_changed.emit(self._current_file)
 

@@ -8,8 +8,9 @@ import os
 from collections import Counter
 from modules.metadata_cache import cached_entropy
 
+
 @cached_entropy
-def calculate_entropy(file_path: str, sample_size: int = None) -> float:
+def calculate_entropy(file_path: str, sample_size: int | None = None) -> float:
     """
     Calculate Shannon entropy of a file.
 
@@ -26,10 +27,10 @@ def calculate_entropy(file_path: str, sample_size: int = None) -> float:
             return 0.0
 
         # Read the file or a sample
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             if sample_size and file_size > sample_size:
                 # Sample from start, middle, and end for better distribution
-                data = b''
+                data = b""
                 sample_chunk = sample_size // 3
 
                 # Start
@@ -47,7 +48,7 @@ def calculate_entropy(file_path: str, sample_size: int = None) -> float:
                 data = data[:sample_size]
             else:
                 data = f.read()
-        
+
         if not data:
             return 0.0
 
@@ -71,7 +72,9 @@ def entropy_of_bytes(data: bytes) -> float:
     return entropy
 
 
-def entropy_profile(file_path: str, blocks: int = 64, block_size: int = 32_768) -> list[float]:
+def entropy_profile(
+    file_path: str, blocks: int = 64, block_size: int = 32_768
+) -> list[float]:
     """
     Entropy of `blocks` evenly spaced regions across the file.
 
@@ -92,7 +95,10 @@ def entropy_profile(file_path: str, blocks: int = 64, block_size: int = 32_768) 
             data = f.read()
         n = min(blocks, max(1, size // 256))
         step = max(1, size // n)
-        return [entropy_of_bytes(data[i * step:(i + 1) * step if i < n - 1 else size]) for i in range(n)]
+        return [
+            entropy_of_bytes(data[i * step : (i + 1) * step if i < n - 1 else size])
+            for i in range(n)
+        ]
 
     result = []
     stride = size / blocks
@@ -101,6 +107,7 @@ def entropy_profile(file_path: str, blocks: int = 64, block_size: int = 32_768) 
             f.seek(int(i * stride))
             result.append(entropy_of_bytes(f.read(block_size)))
     return result
+
 
 def entropy_percentage(entropy: float) -> float:
     """Convert entropy to a percentage (0-100)."""

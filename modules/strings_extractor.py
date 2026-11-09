@@ -8,9 +8,13 @@ import re
 from typing import List, Tuple, Iterator, Optional, Callable
 
 
-def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii',
-                    max_results: Optional[int] = None,
-                    cancel_cb: Optional[Callable[[], bool]] = None) -> List[Tuple[int, str]]:
+def extract_strings(
+    file_path: str,
+    min_length: int = 4,
+    encoding: str = "ascii",
+    max_results: Optional[int] = None,
+    cancel_cb: Optional[Callable[[], bool]] = None,
+) -> List[Tuple[int, str]]:
     """
     Extract printable strings from a binary file.
 
@@ -28,7 +32,9 @@ def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii'
 
     try:
         # Use streaming approach to avoid loading entire file into memory
-        for offset, string in extract_strings_streaming(file_path, min_length, encoding):
+        for offset, string in extract_strings_streaming(
+            file_path, min_length, encoding
+        ):
             strings.append((offset, string))
             if max_results is not None and len(strings) >= max_results:
                 break
@@ -44,26 +50,32 @@ def extract_strings(file_path: str, min_length: int = 4, encoding: str = 'ascii'
 def _build_pattern(encoding: str, min_length: int) -> "re.Pattern[bytes]":
     """Compile the byte-level regex that matches a printable run for `encoding`."""
     n = str(max(1, min_length)).encode()
-    if encoding == 'utf-8':
+    if encoding == "utf-8":
         # A printable ASCII byte or a complete, well-formed multi-byte UTF-8 sequence
-        char = (b'(?:[\x20-\x7E\t]'
-                b'|[\xC2-\xDF][\x80-\xBF]'
-                b'|[\xE0-\xEF][\x80-\xBF]{2}'
-                b'|[\xF0-\xF4][\x80-\xBF]{3})')
-        return re.compile(char + b'{' + n + b',}')
-    if encoding == 'utf-16':
+        char = (
+            b"(?:[\x20-\x7e\t]"
+            b"|[\xc2-\xdf][\x80-\xbf]"
+            b"|[\xe0-\xef][\x80-\xbf]{2}"
+            b"|[\xf0-\xf4][\x80-\xbf]{3})"
+        )
+        return re.compile(char + b"{" + n + b",}")
+    if encoding == "utf-16":
         # UTF-16 LE: printable ASCII followed by a NUL high byte
-        return re.compile(b'(?:[\x20-\x7E]\x00){' + n + b',}')
-    if encoding == 'latin-1':
+        return re.compile(b"(?:[\x20-\x7e]\x00){" + n + b",}")
+    if encoding == "latin-1":
         # Printable Latin-1, excluding the C1 control range 0x7F-0x9F
-        return re.compile(b'[\x20-\x7E\xA0-\xFF]{' + n + b',}')
+        return re.compile(b"[\x20-\x7e\xa0-\xff]{" + n + b",}")
     # ASCII (default)
-    return re.compile(b'[\x20-\x7E]{' + n + b',}')
+    return re.compile(b"[\x20-\x7e]{" + n + b",}")
 
 
-def extract_strings_streaming(file_path: str, min_length: int = 4, encoding: str = 'ascii',
-                               chunk_size: int = 1_000_000,
-                               max_string_length: int = 65_536) -> Iterator[Tuple[int, str]]:
+def extract_strings_streaming(
+    file_path: str,
+    min_length: int = 4,
+    encoding: str = "ascii",
+    chunk_size: int = 1_000_000,
+    max_string_length: int = 65_536,
+) -> Iterator[Tuple[int, str]]:
     """
     Extract printable strings from a binary file using streaming approach.
 
@@ -82,15 +94,19 @@ def extract_strings_streaming(file_path: str, min_length: int = 4, encoding: str
         (offset, string) tuples
     """
     pattern = _build_pattern(encoding, min_length)
-    codec = 'utf-16-le' if encoding == 'utf-16' else ('ascii' if encoding not in ('utf-8', 'latin-1') else encoding)
-    char_width = 2 if encoding == 'utf-16' else (4 if encoding == 'utf-8' else 1)
+    codec = (
+        "utf-16-le"
+        if encoding == "utf-16"
+        else ("ascii" if encoding not in ("utf-8", "latin-1") else encoding)
+    )
+    char_width = 2 if encoding == "utf-16" else (4 if encoding == "utf-8" else 1)
     # Any match starting in the last `tail` bytes might still be growing / not yet long enough
     tail = min_length * char_width
 
-    carry = b''
-    carry_offset = 0            # file offset of carry[0]
+    carry = b""
+    carry_offset = 0  # file offset of carry[0]
 
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         while True:
             chunk = f.read(chunk_size)
             eof = not chunk
@@ -102,14 +118,18 @@ def extract_strings_streaming(file_path: str, min_length: int = 4, encoding: str
             cut = len(data) if eof else max(0, len(data) - tail)
             last_end = 0
             for match in pattern.finditer(data):
-                if not eof and match.end() == len(data) and match.end() - match.start() < max_string_length:
+                if (
+                    not eof
+                    and match.end() == len(data)
+                    and match.end() - match.start() < max_string_length
+                ):
                     # Run touches the end of the buffer: it may continue in the next chunk
                     cut = min(cut, match.start())
                     break
                 if match.start() >= cut:
                     break
                 last_end = match.end()
-                decoded = match.group().decode(codec, errors='ignore')
+                decoded = match.group().decode(codec, errors="ignore")
                 if len(decoded) >= min_length:
                     yield (base + match.start(), decoded)
 
@@ -124,7 +144,12 @@ def extract_strings_streaming(file_path: str, min_length: int = 4, encoding: str
             carry_offset = base + cut
 
 
-def extract_strings_with_context(file_path: str, min_length: int = 4, encoding: str = 'ascii', context_bytes: int = 16) -> List[Tuple[int, str, bytes, bytes]]:
+def extract_strings_with_context(
+    file_path: str,
+    min_length: int = 4,
+    encoding: str = "ascii",
+    context_bytes: int = 16,
+) -> List[Tuple[int, str, bytes, bytes]]:
     """
     Extract strings with surrounding context bytes.
 
@@ -140,10 +165,13 @@ def extract_strings_with_context(file_path: str, min_length: int = 4, encoding: 
         if file_size > 100_000_000:  # 100MB limit
             return []  # Skip context extraction for very large files
 
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             data = f.read()
 
         strings = extract_strings(file_path, min_length, encoding)
+        # Same codec the extractor decoded with. Plain 'utf-16' would prepend a
+        # 2-byte BOM and shift every "after" window.
+        codec = "utf-16-le" if encoding == "utf-16" else encoding
 
         for offset, string in strings:
             # Get context before
@@ -151,8 +179,9 @@ def extract_strings_with_context(file_path: str, min_length: int = 4, encoding: 
             before_bytes = data[before_start:offset]
 
             # Get context after
-            after_end = min(len(data), offset + len(string.encode(encoding, errors='ignore')) + context_bytes)
-            after_bytes = data[offset + len(string.encode(encoding, errors='ignore')):after_end]
+            end = offset + len(string.encode(codec, errors="ignore"))
+            after_end = min(len(data), end + context_bytes)
+            after_bytes = data[end:after_end]
 
             strings_with_context.append((offset, string, before_bytes, after_bytes))
 
@@ -162,8 +191,9 @@ def extract_strings_with_context(file_path: str, min_length: int = 4, encoding: 
     return strings_with_context
 
 
-def filter_strings(strings: List[Tuple[int, str]], search_term: str = "",
-                  case_sensitive: bool = False) -> List[Tuple[int, str]]:
+def filter_strings(
+    strings: List[Tuple[int, str]], search_term: str = "", case_sensitive: bool = False
+) -> List[Tuple[int, str]]:
     """
     Filter strings based on search criteria.
 

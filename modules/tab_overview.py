@@ -5,31 +5,60 @@ tab_overview.py — "Overview" tab: summary cards for a loaded file.
 from __future__ import annotations
 import os
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGridLayout,
-    QScrollArea, QFrame, QSizePolicy, QPushButton, QStackedWidget,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QGridLayout,
+    QScrollArea,
+    QFrame,
+    QPushButton,
+    QStackedWidget,
     QProgressBar,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, QSize
 from PyQt5.QtGui import QPixmap, QImageReader
 from modules.file_info import FileInfo
 from modules.widgets import (
-    KVRow, SectionLabel, HSep, TagChip, kind_icon, kind_color, Card,
-    EntropyGraph, EmptyState, copy_to_clipboard, reveal_in_file_manager,
+    KVRow,
+    SectionLabel,
+    TagChip,
+    kind_icon,
+    kind_color,
+    Card,
+    EntropyGraph,
+    EmptyState,
+    copy_to_clipboard,
+    reveal_in_file_manager,
     open_with_default_app,
 )
 from modules.theme import (
-    BG_PANEL, BG_CARD, BG_MID, ACCENT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
-    BORDER, SUCCESS, ERROR, WARNING, INFO, PURPLE, BG_HOVER, entropy_color, rgba,
+    BG_MID,
+    ACCENT,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    TEXT_MUTED,
+    BORDER,
+    ERROR,
+    WARNING,
+    INFO,
+    PURPLE,
+    entropy_color,
+    rgba,
 )
 from modules.entropy_calculator import (
-    calculate_entropy, entropy_percentage, entropy_description, entropy_profile,
+    calculate_entropy,
+    entropy_percentage,
+    entropy_description,
+    entropy_profile,
 )
 
 
 class EntropyWorker(QObject):
     """Worker for calculating entropy in background thread."""
+
     finished = pyqtSignal(float, float, str)  # entropy, percentage, description
-    profile_ready = pyqtSignal(list)          # per-region entropy values
+    profile_ready = pyqtSignal(list)  # per-region entropy values
 
     def __init__(self, file_path: str):
         super().__init__()
@@ -37,7 +66,9 @@ class EntropyWorker(QObject):
 
     def run(self):
         try:
-            entropy = calculate_entropy(self.file_path, sample_size=1_000_000)  # 1MB sample
+            entropy = calculate_entropy(
+                self.file_path, sample_size=1_000_000
+            )  # 1MB sample
             entropy_pct = entropy_percentage(entropy)
             entropy_desc = entropy_description(entropy)
             self.finished.emit(entropy, entropy_pct, entropy_desc)
@@ -49,15 +80,17 @@ class EntropyWorker(QObject):
 
 
 class OverviewTab(QWidget):
-    open_requested = pyqtSignal()          # empty-state "Open File…" button
-    file_requested = pyqtSignal(str)       # recent-file shortcut clicked
-    navigate_requested = pyqtSignal(str)   # jump to another tab, e.g. "hashes"
+    open_requested = pyqtSignal()  # empty-state "Open File…" button
+    file_requested = pyqtSignal(str)  # recent-file shortcut clicked
+    navigate_requested = pyqtSignal(str)  # jump to another tab, e.g. "hashes"
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._entropy_card = None  # Store reference to entropy card for updates
         self._info: FileInfo | None = None
-        self._threads: dict[QThread, EntropyWorker] = {}   # keeps workers alive until done
+        self._threads: dict[
+            QThread, EntropyWorker
+        ] = {}  # keeps workers alive until done
         self._entropy_token = 0
 
         outer = QVBoxLayout(self)
@@ -68,7 +101,8 @@ class OverviewTab(QWidget):
 
         # Page 0: empty state
         self._empty = EmptyState(
-            "🗂", "No file loaded",
+            "🗂",
+            "No file loaded",
             "Drop a file anywhere on this window, pick one from the sidebar, or open one below.",
             "Open File…",
         )
@@ -185,18 +219,20 @@ class OverviewTab(QWidget):
         grid.setVerticalSpacing(14)
 
         identity = [
-            ("Name",      info.name),
+            ("Name", info.name),
             ("Full Path", info.path),
-            ("Size",      f"{info.size_human}  ({info.size:,} bytes)"),
+            ("Size", f"{info.size_human}  ({info.size:,} bytes)"),
             ("MIME Type", info.mime_type),
-            ("Kind",      info.kind.capitalize()),
+            ("Kind", info.kind.capitalize()),
         ]
         if info.detected_type:
             identity.append(("Detected", info.detected_type))
         id_card = self._make_card(identity)
         if info.extension_mismatch:
-            warn = QLabel(f"⚠  The extension '{info.suffix or '(none)'}' does not match the content "
-                          f"({info.detected_type}).")
+            warn = QLabel(
+                f"⚠  The extension '{info.suffix or '(none)'}' does not match the content "
+                f"({info.detected_type})."
+            )
             warn.setWordWrap(True)
             warn.setStyleSheet(
                 f"color: {WARNING}; background: {rgba(WARNING, 0.10)}; border: 1px solid {rgba(WARNING, 0.35)};"
@@ -207,21 +243,25 @@ class OverviewTab(QWidget):
         grid.addWidget(self._section_block("Identity", id_card), 0, 0)
 
         # ── Timestamps ─────────────────────────────────────────────────
-        ts_card = self._make_card([
-            ("Modified", info.modified_str),
-            ("Accessed", info.accessed_str),
-            ("Created",  info.created_str),
-        ])
+        ts_card = self._make_card(
+            [
+                ("Modified", info.modified_str),
+                ("Accessed", info.accessed_str),
+                ("Created", info.created_str),
+            ]
+        )
         grid.addWidget(self._section_block("Timestamps", ts_card), 0, 1)
 
         # ── Permissions ────────────────────────────────────────────────
         perm = info.permissions
-        perm_card = self._make_card([
-            ("Mode (symbolic)", perm.symbolic),
-            ("Mode (octal)",    perm.octal.replace("0o", "0")),
-            ("Owner",           info.owner),
-            ("Group",           info.group),
-        ])
+        perm_card = self._make_card(
+            [
+                ("Mode (symbolic)", perm.symbolic),
+                ("Mode (octal)", perm.octal.replace("0o", "0")),
+                ("Owner", info.owner),
+                ("Group", info.group),
+            ]
+        )
         grid.addWidget(self._section_block("Permissions", perm_card), 1, 0)
 
         # ── Entropy ────────────────────────────────────────────────────
@@ -241,18 +281,31 @@ class OverviewTab(QWidget):
             rows = [
                 ("Dimensions", f"{im.width} × {im.height} px  ({megapixels:.1f} MP)"),
                 ("Color Mode", im.mode),
-                ("Format",     im.format),
+                ("Format", im.format),
             ]
             if im.dpi:
                 try:
-                    rows.append(("DPI", f"{float(im.dpi[0]):.0f} × {float(im.dpi[1]):.0f}"))
+                    rows.append(
+                        ("DPI", f"{float(im.dpi[0]):.0f} × {float(im.dpi[1]):.0f}")
+                    )
                 except (TypeError, ValueError, IndexError):
                     pass
             if im.has_exif:
-                for key in ("Make", "Model", "DateTimeOriginal", "LensModel", "Software"):
+                for key in (
+                    "Make",
+                    "Model",
+                    "DateTimeOriginal",
+                    "LensModel",
+                    "Software",
+                ):
                     if key in im.exif:
                         rows.append((_humanize(key), im.exif[key]))
-                rows.append(("EXIF Data", f"{len(im.exif)} tags present — see Analysis › Advanced"))
+                rows.append(
+                    (
+                        "EXIF Data",
+                        f"{len(im.exif)} tags present — see Analysis › Advanced",
+                    )
+                )
             card = self._make_card(rows)
             self._add_card(card)
 
@@ -268,7 +321,14 @@ class OverviewTab(QWidget):
             if am.sample_rate:
                 rows.append(("Sample Rate", f"{am.sample_rate:,} Hz"))
             if am.channels:
-                rows.append(("Channels", {1: "1 (mono)", 2: "2 (stereo)"}.get(am.channels, str(am.channels))))
+                rows.append(
+                    (
+                        "Channels",
+                        {1: "1 (mono)", 2: "2 (stereo)"}.get(
+                            am.channels, str(am.channels)
+                        ),
+                    )
+                )
             for k, v in list(am.tags.items())[:8]:
                 rows.append((k.capitalize(), v))
             if rows:
@@ -298,14 +358,27 @@ class OverviewTab(QWidget):
         if info.document_meta:
             dm = info.document_meta
             rows = [("Type", dm.doc_type)]
-            for label, value in (("Title", dm.title), ("Author", dm.author), ("Subject", dm.subject),
-                                 ("Producer", dm.producer), ("Last edited by", dm.software if dm.doc_type != 'PDF' else ''),
-                                 ("Keywords", dm.topic if dm.doc_type != 'PDF' else dm.comment)):
+            for label, value in (
+                ("Title", dm.title),
+                ("Author", dm.author),
+                ("Subject", dm.subject),
+                ("Producer", dm.producer),
+                ("Last edited by", dm.software if dm.doc_type != "PDF" else ""),
+                ("Keywords", dm.topic if dm.doc_type != "PDF" else dm.comment),
+            ):
                 if value:
                     rows.append((label, str(value)))
             if dm.pages is not None:
-                rows.append(("Sheets" if dm.doc_type == 'Spreadsheet' else
-                             "Slides" if dm.doc_type == 'Presentation' else "Pages", str(dm.pages)))
+                rows.append(
+                    (
+                        "Sheets"
+                        if dm.doc_type == "Spreadsheet"
+                        else "Slides"
+                        if dm.doc_type == "Presentation"
+                        else "Pages",
+                        str(dm.pages),
+                    )
+                )
             self._add_section("Document Properties")
             self._add_card(self._make_card(rows))
 
@@ -327,10 +400,14 @@ class OverviewTab(QWidget):
         token = self._entropy_token
 
         worker = EntropyWorker(file_path)
-        thread = QThread(self)          # parented: never garbage-collected while running
+        thread = QThread(self)  # parented: never garbage-collected while running
         worker.moveToThread(thread)
-        worker.finished.connect(lambda e, p, d, t=token: self._on_entropy_calculated(e, p, d, t))
-        worker.profile_ready.connect(lambda vals, t=token: self._on_profile_ready(vals, t))
+        worker.finished.connect(
+            lambda e, p, d, t=token: self._on_entropy_calculated(e, p, d, t)
+        )
+        worker.profile_ready.connect(
+            lambda vals, t=token: self._on_profile_ready(vals, t)
+        )
         worker.profile_ready.connect(thread.quit)
         thread.started.connect(worker.run)
         thread.finished.connect(worker.deleteLater)
@@ -345,13 +422,21 @@ class OverviewTab(QWidget):
         self._threads.pop(thread, None)
         thread.deleteLater()
 
-    def _on_entropy_calculated(self, entropy: float, percentage: float, description: str, token: int = None):
+    def _on_entropy_calculated(
+        self,
+        entropy: float,
+        percentage: float,
+        description: str,
+        token: int | None = None,
+    ):
         """Handle entropy calculation completion."""
         if token is not None and token != self._entropy_token:
-            return   # result for a file that is no longer displayed
+            return  # result for a file that is no longer displayed
         if self._entropy_card:
             # Update the existing entropy card
-            self._update_entropy_card(self._entropy_card, entropy, percentage, description)
+            self._update_entropy_card(
+                self._entropy_card, entropy, percentage, description
+            )
 
     def _on_profile_ready(self, values: list, token: int):
         if token == self._entropy_token and self._entropy_graph is not None:
@@ -359,7 +444,9 @@ class OverviewTab(QWidget):
             if not values:
                 self._entropy_graph.hide()
 
-    def _update_entropy_card(self, card: QWidget, entropy: float, percentage: float, description: str):
+    def _update_entropy_card(
+        self, card: QWidget, entropy: float, percentage: float, description: str
+    ):
         """Update entropy card with calculated values."""
         color = entropy_color(entropy)
         if self._entropy_bar is not None:
@@ -405,7 +492,9 @@ class OverviewTab(QWidget):
         thumb = _thumbnail(info.path, 72) if info.kind == "image" else None
         if thumb is not None:
             icon_lbl.setPixmap(thumb)
-            icon_lbl.setStyleSheet(f"border: 1px solid {BORDER}; border-radius: 8px; background: {BG_MID};")
+            icon_lbl.setStyleSheet(
+                f"border: 1px solid {BORDER}; border-radius: 8px; background: {BG_MID};"
+            )
         else:
             color = kind_color(info.kind)
             icon_lbl.setText(kind_icon(info.kind))
@@ -419,11 +508,15 @@ class OverviewTab(QWidget):
         text_col.setSpacing(6)
 
         name_lbl = QLabel(info.name)
-        name_lbl.setStyleSheet(f"font-size: 19px; font-weight: bold; color: {TEXT_PRIMARY};")
+        name_lbl.setStyleSheet(
+            f"font-size: 19px; font-weight: bold; color: {TEXT_PRIMARY};"
+        )
         name_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
         name_lbl.setWordWrap(True)
 
-        sub_lbl = QLabel(f"{info.size_human}  ·  {info.mime_type}  ·  modified {info.modified_str}")
+        sub_lbl = QLabel(
+            f"{info.size_human}  ·  {info.mime_type}  ·  modified {info.modified_str}"
+        )
         sub_lbl.setStyleSheet(f"font-size: 11px; color: {TEXT_SECONDARY};")
 
         path_lbl = QLabel(os.path.dirname(info.path))
@@ -460,10 +553,26 @@ class OverviewTab(QWidget):
         actions = QVBoxLayout()
         actions.setSpacing(6)
         for label, tip, handler in (
-            ("Copy Path", "Copy the full path to the clipboard", lambda: copy_to_clipboard(info.path)),
-            ("Reveal", "Show in Explorer / Finder / file manager", lambda: reveal_in_file_manager(info.path)),
-            ("Open", "Open with the default application", lambda: open_with_default_app(info.path)),
-            ("Copy Summary", "Copy a plain-text summary of this file", lambda: copy_to_clipboard(self._summary_text(info))),
+            (
+                "Copy Path",
+                "Copy the full path to the clipboard",
+                lambda: copy_to_clipboard(info.path),
+            ),
+            (
+                "Reveal",
+                "Show in Explorer / Finder / file manager",
+                lambda: reveal_in_file_manager(info.path),
+            ),
+            (
+                "Open",
+                "Open with the default application",
+                lambda: open_with_default_app(info.path),
+            ),
+            (
+                "Copy Summary",
+                "Copy a plain-text summary of this file",
+                lambda: copy_to_clipboard(self._summary_text(info)),
+            ),
         ):
             btn = QPushButton(label)
             btn.setToolTip(tip)
@@ -489,7 +598,9 @@ class OverviewTab(QWidget):
 
         return frame
 
-    def _make_entropy_card(self, entropy: float, percentage: float, description: str) -> QWidget:
+    def _make_entropy_card(
+        self, entropy: float, percentage: float, description: str
+    ) -> QWidget:
         frame = Card()
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(16, 12, 16, 12)
@@ -499,8 +610,10 @@ class OverviewTab(QWidget):
         title_row = QHBoxLayout()
         title = QLabel("Shannon Entropy")
         title.setStyleSheet(f"font-weight: bold; color: {TEXT_PRIMARY};")
-        title.setToolTip("How random the bytes are: 0 = constant, 8 = indistinguishable from random.\n"
-                         "Compressed and encrypted data sit near 8.")
+        title.setToolTip(
+            "How random the bytes are: 0 = constant, 8 = indistinguishable from random.\n"
+            "Compressed and encrypted data sit near 8."
+        )
         title_row.addWidget(title)
         title_row.addStretch()
         layout.addLayout(title_row)
@@ -510,8 +623,11 @@ class OverviewTab(QWidget):
         progress.setRange(0, 100)
         progress.setValue(int(percentage))
         progress.setTextVisible(True)
-        progress.setFormat("Calculating…" if description == "Calculating..." else
-                           f"{entropy:.2f} bits/byte ({percentage:.1f}%)")
+        progress.setFormat(
+            "Calculating…"
+            if description == "Calculating..."
+            else f"{entropy:.2f} bits/byte ({percentage:.1f}%)"
+        )
         progress.setStyleSheet(self._bar_style(entropy_color(entropy)))
         layout.addWidget(progress)
         self._entropy_bar = progress
@@ -525,7 +641,9 @@ class OverviewTab(QWidget):
 
         # Profile graph
         graph_lbl = QLabel("Entropy across the file")
-        graph_lbl.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 10px; letter-spacing: 1px;")
+        graph_lbl.setStyleSheet(
+            f"color: {TEXT_MUTED}; font-size: 10px; letter-spacing: 1px;"
+        )
         layout.addSpacing(4)
         layout.addWidget(graph_lbl)
         self._entropy_graph = EntropyGraph()
@@ -544,7 +662,10 @@ class OverviewTab(QWidget):
             f"Kind:      {info.kind}",
         ]
         if info.detected_type:
-            lines.append(f"Detected:  {info.detected_type}" + ("  (EXTENSION MISMATCH)" if info.extension_mismatch else ""))
+            lines.append(
+                f"Detected:  {info.detected_type}"
+                + ("  (EXTENSION MISMATCH)" if info.extension_mismatch else "")
+            )
         lines += [
             f"Modified:  {info.modified_str}",
             f"Accessed:  {info.accessed_str}",
@@ -557,8 +678,10 @@ class OverviewTab(QWidget):
 
 # ── Module helpers ─────────────────────────────────────────────────────────
 
+
 def _kind_for(path: str) -> str:
     from modules.file_info import classify_path
+
     return classify_path(path)
 
 
@@ -595,7 +718,9 @@ def _thumbnail(path: str, size: int):
         img = reader.read()
         if img.isNull():
             return None
-        pix = QPixmap.fromImage(img).scaled(size - 4, size - 4, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pix = QPixmap.fromImage(img).scaled(
+            size - 4, size - 4, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         return pix
     except Exception:
         return None

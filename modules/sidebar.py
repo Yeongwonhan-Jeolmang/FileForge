@@ -7,18 +7,37 @@ import os
 from pathlib import Path
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QSizePolicy, QTreeWidget, QTreeWidgetItem,
-    QFileDialog, QFrame, QLineEdit, QAbstractItemView,
-    QListWidget, QListWidgetItem, QTabWidget, QMenu,
-    QStyledItemDelegate, QStyle, QStyleOptionViewItem,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QFileDialog,
+    QFrame,
+    QLineEdit,
+    QAbstractItemView,
+    QListWidget,
+    QListWidgetItem,
+    QTabWidget,
+    QMenu,
+    QStyledItemDelegate,
+    QStyle,
+    QStyleOptionViewItem,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRect, QTimer
 from PyQt5.QtGui import QColor, QFont, QPainter
 
 from modules.theme import (
-    BG_DARKEST, BG_MID, BG_CARD, BG_HOVER, BG_SELECTED, BORDER, ACCENT,
-    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, ERROR,
+    BG_HOVER,
+    BG_SELECTED,
+    ACCENT,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    TEXT_MUTED,
+    ERROR,
 )
 from modules.widgets import kind_icon, copy_to_clipboard, reveal_in_file_manager
 from modules.file_info import classify_path, human_size
@@ -45,7 +64,9 @@ class _RecentDelegate(QStyledItemDelegate):
         hovered = option.state & QStyle.State_MouseOver
         if selected:
             painter.fillRect(rect, QColor(BG_SELECTED))
-            painter.fillRect(QRect(rect.left(), rect.top(), 3, rect.height()), QColor(ACCENT))
+            painter.fillRect(
+                QRect(rect.left(), rect.top(), 3, rect.height()), QColor(ACCENT)
+            )
         elif hovered:
             painter.fillRect(rect, QColor(BG_HOVER))
 
@@ -57,29 +78,41 @@ class _RecentDelegate(QStyledItemDelegate):
         x = rect.left() + 12
 
         painter.setPen(QColor(TEXT_PRIMARY))
-        painter.drawText(QRect(x, rect.top() + 6, 22, line_h), Qt.AlignLeft | Qt.AlignVCenter, icon)
+        painter.drawText(
+            QRect(x, rect.top() + 6, 22, line_h), Qt.AlignLeft | Qt.AlignVCenter, icon
+        )
         name_rect = QRect(x + 24, rect.top() + 6, rect.width() - 44, line_h)
         name_font = QFont(option.font)
         name_font.setStrikeOut(bool(missing))
         painter.setFont(name_font)
-        painter.setPen(QColor(TEXT_MUTED if missing else (ACCENT if selected else TEXT_PRIMARY)))
-        painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter,
-                         fm.elidedText(os.path.basename(path), Qt.ElideMiddle, name_rect.width()))
+        painter.setPen(
+            QColor(TEXT_MUTED if missing else (ACCENT if selected else TEXT_PRIMARY))
+        )
+        painter.drawText(
+            name_rect,
+            Qt.AlignLeft | Qt.AlignVCenter,
+            fm.elidedText(os.path.basename(path), Qt.ElideMiddle, name_rect.width()),
+        )
 
         small = QFont(option.font)
         small.setPointSizeF(max(7.0, option.font.pointSizeF() - 1.5))
         painter.setFont(small)
         painter.setPen(QColor(ERROR if missing else TEXT_MUTED))
         dir_rect = QRect(x + 24, rect.top() + 6 + line_h, rect.width() - 44, line_h)
-        folder = "missing — " + os.path.dirname(path) if missing else os.path.dirname(path)
-        painter.drawText(dir_rect, Qt.AlignLeft | Qt.AlignVCenter,
-                         painter.fontMetrics().elidedText(folder, Qt.ElideMiddle, dir_rect.width()))
+        folder = (
+            "missing — " + os.path.dirname(path) if missing else os.path.dirname(path)
+        )
+        painter.drawText(
+            dir_rect,
+            Qt.AlignLeft | Qt.AlignVCenter,
+            painter.fontMetrics().elidedText(folder, Qt.ElideMiddle, dir_rect.width()),
+        )
         painter.restore()
 
 
 class Sidebar(QWidget):
-    file_selected = pyqtSignal(str)     # emits path when user picks a file
-    folder_selected = pyqtSignal(str)   # emits path when user asks to analyse a folder
+    file_selected = pyqtSignal(str)  # emits path when user picks a file
+    folder_selected = pyqtSignal(str)  # emits path when user asks to analyse a folder
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -254,7 +287,7 @@ class Sidebar(QWidget):
         if path and os.path.isfile(path):
             self.open_file(path)
         elif path:
-            self._rebuild_recent()   # refresh "missing" marker
+            self._rebuild_recent()  # refresh "missing" marker
 
     def _on_tree_activated(self, item: QTreeWidgetItem, col: int = 0):
         path = item.data(0, _ROLE_PATH)
@@ -278,8 +311,12 @@ class Sidebar(QWidget):
         for i in range(self._dir_tree.topLevelItemCount()):
             self._filter_tree(self._dir_tree.topLevelItem(i), text, is_root=True)
 
-    def _filter_tree(self, item: QTreeWidgetItem, text: str, is_root: bool = False) -> bool:
+    def _filter_tree(
+        self, item: QTreeWidgetItem | None, text: str, is_root: bool = False
+    ) -> bool:
         """Hide non-matching loaded items; a folder stays visible if anything inside matches."""
+        if item is None:
+            return False
         any_child = False
         for i in range(item.childCount()):
             if self._filter_tree(item.child(i), text):
@@ -421,7 +458,13 @@ class Sidebar(QWidget):
                     except OSError:
                         continue
         except (PermissionError, OSError) as e:
-            err = QTreeWidgetItem(["(permission denied)" if isinstance(e, PermissionError) else "(unreadable)"])
+            err = QTreeWidgetItem(
+                [
+                    "(permission denied)"
+                    if isinstance(e, PermissionError)
+                    else "(unreadable)"
+                ]
+            )
             err.setForeground(0, QColor(TEXT_MUTED))
             err.setFlags(Qt.NoItemFlags)
             parent.addChild(err)
@@ -456,8 +499,10 @@ class Sidebar(QWidget):
     @staticmethod
     def _get_roots() -> list[tuple[str, str]]:
         import platform
+
         if platform.system() == "Windows":
             import string, ctypes
+
             drives = []
             home = str(Path.home())
             drives.append(("🏠  Home", home))

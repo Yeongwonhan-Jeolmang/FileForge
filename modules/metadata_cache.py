@@ -56,7 +56,8 @@ class MetadataCache:
         current_time = time.time()
         with self._lock:
             expired_keys = [
-                key for key, (_, timestamp) in self._cache.items()
+                key
+                for key, (_, timestamp) in self._cache.items()
                 if current_time - timestamp >= self._ttl
             ]
             for key in expired_keys:
@@ -67,9 +68,9 @@ class MetadataCache:
 
 
 # Global cache instances
-_file_info_cache = MetadataCache(ttl_seconds=600, max_entries=256)     # 10 minutes
-_hash_cache = MetadataCache(ttl_seconds=3600, max_entries=20_000)      # 1 hour
-_entropy_cache = MetadataCache(ttl_seconds=1800, max_entries=1024)     # 30 minutes
+_file_info_cache = MetadataCache(ttl_seconds=600, max_entries=256)  # 10 minutes
+_hash_cache = MetadataCache(ttl_seconds=3600, max_entries=20_000)  # 1 hour
+_entropy_cache = MetadataCache(ttl_seconds=1800, max_entries=1024)  # 30 minutes
 
 
 def file_signature(path: str) -> str:
@@ -86,6 +87,7 @@ def file_signature(path: str) -> str:
 
 def cached_file_info(func):
     """Decorator to cache file info results."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         sig = file_signature(args[0]) if args else ""
@@ -97,16 +99,18 @@ def cached_file_info(func):
         result = func(*args, **kwargs)
         _file_info_cache.set(key, result)
         return result
+
     return wrapper
 
 
 def cached_hash(func):
     """Decorator to cache hash results."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not args:
             return func(*args, **kwargs)
-        hash_type = kwargs.get('hash_type', args[1] if len(args) > 1 else 'sha256')
+        hash_type = kwargs.get("hash_type", args[1] if len(args) > 1 else "sha256")
         key = f"hash:{hash_type}:{file_signature(args[0])}"
         cached = _hash_cache.get(key)
         if cached is not None:
@@ -115,16 +119,18 @@ def cached_hash(func):
         result = func(*args, **kwargs)
         _hash_cache.set(key, result)
         return result
+
     return wrapper
 
 
 def cached_entropy(func):
     """Decorator to cache entropy results."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not args:
             return func(*args, **kwargs)
-        sample = kwargs.get('sample_size', args[1] if len(args) > 1 else None)
+        sample = kwargs.get("sample_size", args[1] if len(args) > 1 else None)
         key = f"entropy:{sample}:{file_signature(args[0])}"
         cached = _entropy_cache.get(key)
         if cached is not None:
@@ -133,6 +139,7 @@ def cached_entropy(func):
         result = func(*args, **kwargs)
         _entropy_cache.set(key, result)
         return result
+
     return wrapper
 
 

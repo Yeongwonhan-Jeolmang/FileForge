@@ -58,3 +58,22 @@ py-modules = ["main"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.pyrefly]
+project-includes = ["main.py", "modules", "tests"]
+project-excludes = ["**/.venv/**", "**/venv/**", "build/**", "dist/**"]
+python-interpreter-path = ".venv/bin/python"
+# PyQt5's bundled type stubs don't model Qt enums, bound signals or nullable
+# getters in a way Pyrefly understands, so the stricter presets bury real
+# problems under hundreds of false positives. Start from "basic" and switch on
+# the extra checks that are actually useful for this codebase.
+preset = "basic"
+# PyPDF2 is only an optional fallback when the maintained `pypdf` is missing.
+ignore-missing-imports = ["PyPDF2", "PyPDF2.*"]
+
+[tool.pyrefly.errors]
+bad-assignment = true
+bad-function-definition = true
+unbound-name = true
+unsupported-operation = true
+missing-module-attribute = true

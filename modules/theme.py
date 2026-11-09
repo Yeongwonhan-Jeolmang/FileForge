@@ -14,71 +14,61 @@ import tempfile
 
 # ── Palettes ───────────────────────────────────────────────────────────────
 _DARK = dict(
-    BG_DARKEST  = "#0d0f12",
-    BG_DARK     = "#13161b",
-    BG_MID      = "#1b1f27",
-    BG_PANEL    = "#20252f",
-    BG_CARD     = "#232935",
-    BG_HOVER    = "#2c3345",
-    BG_SELECTED = "#2f3850",
-
-    ACCENT       = "#f5a623",   # amber
-    ACCENT_HOVER = "#f7b84a",
-    ACCENT_DARK  = "#c47f0a",
-    ACCENT_DIM   = "#7a5010",
-    ON_ACCENT    = "#0d0f12",   # text drawn on top of the accent colour
-
-    TEXT_PRIMARY   = "#e8eaf0",
-    TEXT_SECONDARY = "#8a90a0",
-    TEXT_MUTED     = "#5a6278",
-    TEXT_ACCENT    = "#f5a623",
-
-    BORDER       = "#2a3040",
-    BORDER_FOCUS = "#f5a623",
-
-    SUCCESS = "#4caf82",
-    WARNING = "#f5a623",
-    ERROR   = "#e05c5c",
-    INFO    = "#5b9cf6",
-    PURPLE  = "#9d8cff",
-
-    HEX_BG = "#0b0d10",
-    HEX_FG = "#a0ffb0",
-    HEX_OFFSET = "#5b9cf6",
+    BG_DARKEST="#0d0f12",
+    BG_DARK="#13161b",
+    BG_MID="#1b1f27",
+    BG_PANEL="#20252f",
+    BG_CARD="#232935",
+    BG_HOVER="#2c3345",
+    BG_SELECTED="#2f3850",
+    ACCENT="#f5a623",  # amber
+    ACCENT_HOVER="#f7b84a",
+    ACCENT_DARK="#c47f0a",
+    ACCENT_DIM="#7a5010",
+    ON_ACCENT="#0d0f12",  # text drawn on top of the accent colour
+    TEXT_PRIMARY="#e8eaf0",
+    TEXT_SECONDARY="#8a90a0",
+    TEXT_MUTED="#5a6278",
+    TEXT_ACCENT="#f5a623",
+    BORDER="#2a3040",
+    BORDER_FOCUS="#f5a623",
+    SUCCESS="#4caf82",
+    WARNING="#f5a623",
+    ERROR="#e05c5c",
+    INFO="#5b9cf6",
+    PURPLE="#9d8cff",
+    HEX_BG="#0b0d10",
+    HEX_FG="#a0ffb0",
+    HEX_OFFSET="#5b9cf6",
 )
 
 _LIGHT = dict(
-    BG_DARKEST  = "#e7eaf0",
-    BG_DARK     = "#f3f5f8",
-    BG_MID      = "#eceff4",
-    BG_PANEL    = "#ffffff",
-    BG_CARD     = "#ffffff",
-    BG_HOVER    = "#e4e9f1",
-    BG_SELECTED = "#fbe7c2",
-
-    ACCENT       = "#c97d00",
-    ACCENT_HOVER = "#dd8c06",
-    ACCENT_DARK  = "#a06200",
-    ACCENT_DIM   = "#efcf91",
-    ON_ACCENT    = "#ffffff",
-
-    TEXT_PRIMARY   = "#1d2330",
-    TEXT_SECONDARY = "#566074",
-    TEXT_MUTED     = "#8a93a6",
-    TEXT_ACCENT    = "#c97d00",
-
-    BORDER       = "#d6dbe4",
-    BORDER_FOCUS = "#c97d00",
-
-    SUCCESS = "#1f9d63",
-    WARNING = "#c77c02",
-    ERROR   = "#d64545",
-    INFO    = "#2f6fdc",
-    PURPLE  = "#6b5bd6",
-
-    HEX_BG = "#fbfcfd",
-    HEX_FG = "#1f6f43",
-    HEX_OFFSET = "#2f6fdc",
+    BG_DARKEST="#e7eaf0",
+    BG_DARK="#f3f5f8",
+    BG_MID="#eceff4",
+    BG_PANEL="#ffffff",
+    BG_CARD="#ffffff",
+    BG_HOVER="#e4e9f1",
+    BG_SELECTED="#fbe7c2",
+    ACCENT="#c97d00",
+    ACCENT_HOVER="#dd8c06",
+    ACCENT_DARK="#a06200",
+    ACCENT_DIM="#efcf91",
+    ON_ACCENT="#ffffff",
+    TEXT_PRIMARY="#1d2330",
+    TEXT_SECONDARY="#566074",
+    TEXT_MUTED="#8a93a6",
+    TEXT_ACCENT="#c97d00",
+    BORDER="#d6dbe4",
+    BORDER_FOCUS="#c97d00",
+    SUCCESS="#1f9d63",
+    WARNING="#c77c02",
+    ERROR="#d64545",
+    INFO="#2f6fdc",
+    PURPLE="#6b5bd6",
+    HEX_BG="#fbfcfd",
+    HEX_FG="#1f6f43",
+    HEX_OFFSET="#2f6fdc",
 )
 
 PALETTES = {"Dark": _DARK, "Light": _LIGHT}
@@ -90,6 +80,7 @@ def _saved_theme_name() -> str:
     """Read the theme from QSettings without requiring a QApplication."""
     try:
         from PyQt5.QtCore import QSettings
+
         name = QSettings("FileForge", "FileForge").value("theme", "Dark")
     except Exception:
         name = "Dark"
@@ -104,36 +95,36 @@ _P = PALETTES[THEME_NAME]
 IS_DARK = THEME_NAME == "Dark"
 
 # ── Exported tokens (module-level names kept for backwards compatibility) ─
-BG_DARKEST  = _P["BG_DARKEST"]
-BG_DARK     = _P["BG_DARK"]
-BG_MID      = _P["BG_MID"]
-BG_PANEL    = _P["BG_PANEL"]
-BG_CARD     = _P["BG_CARD"]
-BG_HOVER    = _P["BG_HOVER"]
+BG_DARKEST = _P["BG_DARKEST"]
+BG_DARK = _P["BG_DARK"]
+BG_MID = _P["BG_MID"]
+BG_PANEL = _P["BG_PANEL"]
+BG_CARD = _P["BG_CARD"]
+BG_HOVER = _P["BG_HOVER"]
 BG_SELECTED = _P["BG_SELECTED"]
 
-ACCENT       = _P["ACCENT"]
+ACCENT = _P["ACCENT"]
 ACCENT_HOVER = _P["ACCENT_HOVER"]
-ACCENT_DARK  = _P["ACCENT_DARK"]
-ACCENT_DIM   = _P["ACCENT_DIM"]
-ON_ACCENT    = _P["ON_ACCENT"]
+ACCENT_DARK = _P["ACCENT_DARK"]
+ACCENT_DIM = _P["ACCENT_DIM"]
+ON_ACCENT = _P["ON_ACCENT"]
 
-TEXT_PRIMARY   = _P["TEXT_PRIMARY"]
+TEXT_PRIMARY = _P["TEXT_PRIMARY"]
 TEXT_SECONDARY = _P["TEXT_SECONDARY"]
-TEXT_MUTED     = _P["TEXT_MUTED"]
-TEXT_ACCENT    = _P["TEXT_ACCENT"]
+TEXT_MUTED = _P["TEXT_MUTED"]
+TEXT_ACCENT = _P["TEXT_ACCENT"]
 
-BORDER       = _P["BORDER"]
+BORDER = _P["BORDER"]
 BORDER_FOCUS = _P["BORDER_FOCUS"]
 
 SUCCESS = _P["SUCCESS"]
 WARNING = _P["WARNING"]
-ERROR   = _P["ERROR"]
-INFO    = _P["INFO"]
-PURPLE  = _P["PURPLE"]
+ERROR = _P["ERROR"]
+INFO = _P["INFO"]
+PURPLE = _P["PURPLE"]
 
-HEX_BG     = _P["HEX_BG"]
-HEX_FG     = _P["HEX_FG"]
+HEX_BG = _P["HEX_BG"]
+HEX_FG = _P["HEX_FG"]
 HEX_OFFSET = _P["HEX_OFFSET"]
 
 FONT_MONO = "'JetBrains Mono', 'Cascadia Mono', 'Consolas', 'SF Mono', 'Menlo', 'DejaVu Sans Mono', 'Courier New', monospace"
@@ -166,33 +157,39 @@ def entropy_color(entropy: float) -> str:
 # QSS can only load images from files, so tiny SVGs are written once into the
 # temp directory, coloured for the active palette.
 
+
 def _write_assets() -> dict[str, str]:
-    folder = os.path.join(tempfile.gettempdir(), f"fileforge-assets-{THEME_NAME.lower()}")
+    folder = os.path.join(
+        tempfile.gettempdir(), f"fileforge-assets-{THEME_NAME.lower()}"
+    )
     svgs = {
         "check": f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">'
-                 f'<path d="M3.5 8.5l3 3 6-7" fill="none" stroke="{ON_ACCENT}" stroke-width="2.2" '
-                 f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        f'<path d="M3.5 8.5l3 3 6-7" fill="none" stroke="{ON_ACCENT}" stroke-width="2.2" '
+        f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
         "radio": f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">'
-                 f'<circle cx="8" cy="8" r="3.2" fill="{ON_ACCENT}"/></svg>',
+        f'<circle cx="8" cy="8" r="3.2" fill="{ON_ACCENT}"/></svg>',
         "down": f'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">'
-                f'<path d="M2 3.5l3 3 3-3" fill="none" stroke="{TEXT_SECONDARY}" stroke-width="1.6" '
-                f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        f'<path d="M2 3.5l3 3 3-3" fill="none" stroke="{TEXT_SECONDARY}" stroke-width="1.6" '
+        f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
         "up": f'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">'
-              f'<path d="M2 6.5l3-3 3 3" fill="none" stroke="{TEXT_SECONDARY}" stroke-width="1.6" '
-              f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        f'<path d="M2 6.5l3-3 3 3" fill="none" stroke="{TEXT_SECONDARY}" stroke-width="1.6" '
+        f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
         "branch_closed": f'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">'
-                         f'<path d="M3.5 2l3 3-3 3" fill="none" stroke="{TEXT_MUTED}" stroke-width="1.5" '
-                         f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        f'<path d="M3.5 2l3 3-3 3" fill="none" stroke="{TEXT_MUTED}" stroke-width="1.5" '
+        f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
         "branch_open": f'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">'
-                       f'<path d="M2 3.5l3 3 3-3" fill="none" stroke="{ACCENT}" stroke-width="1.5" '
-                       f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        f'<path d="M2 3.5l3 3 3-3" fill="none" stroke="{ACCENT}" stroke-width="1.5" '
+        f'stroke-linecap="round" stroke-linejoin="round"/></svg>',
     }
     paths = {}
     try:
         os.makedirs(folder, exist_ok=True)
         for name, content in svgs.items():
             path = os.path.join(folder, f"{name}.svg")
-            if not os.path.exists(path) or open(path, encoding="utf-8").read() != content:
+            if (
+                not os.path.exists(path)
+                or open(path, encoding="utf-8").read() != content
+            ):
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(content)
             paths[name] = path.replace("\\", "/")

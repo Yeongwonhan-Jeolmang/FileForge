@@ -5,48 +5,62 @@ main_window.py — Top-level QMainWindow: sidebar + tabbed editor area.
 from __future__ import annotations
 import os
 import logging
-from pathlib import Path
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter,
-    QTabWidget, QStatusBar, QAction, QMenuBar, QMenu,
-    QLabel, QFileDialog, QMessageBox, QApplication,
+    QMainWindow,
+    QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QSplitter,
+    QTabWidget,
+    QAction,
+    QLabel,
+    QFileDialog,
+    QMessageBox,
+    QApplication,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, QTimer, QSettings, QByteArray
-from PyQt5.QtGui import QFont, QKeySequence
+from PyQt5.QtGui import QKeySequence
 
 from modules import __version__
 from modules.theme import (
-    STYLESHEET, ACCENT, BG_DARKEST, TEXT_SECONDARY, TEXT_MUTED, BORDER, WARNING,
+    TEXT_SECONDARY,
+    TEXT_MUTED,
+    WARNING,
     build_stylesheet,
 )
 from modules.file_info import read_file_info, FileInfo
 from modules.sidebar import Sidebar
-from modules.tab_overview     import OverviewTab
-from modules.tab_rename       import RenameTab
-from modules.tab_timestamps   import TimestampsTab
-from modules.tab_permissions  import PermissionsTab
-from modules.tab_hashes       import HashesTab
-from modules.tab_audio        import AudioTab
-from modules.tab_batch        import BatchTab
-from modules.tab_advanced     import AdvancedTab
+from modules.tab_overview import OverviewTab
+from modules.tab_rename import RenameTab
+from modules.tab_timestamps import TimestampsTab
+from modules.tab_permissions import PermissionsTab
+from modules.tab_hashes import HashesTab
+from modules.tab_audio import AudioTab
+from modules.tab_batch import BatchTab
+from modules.tab_advanced import AdvancedTab
 from modules.tab_folder_analysis import FolderAnalysisTab
-from modules.tab_integrity    import IntegrityTab
-from modules.tab_preview      import PreviewTab
-from modules.settings_dialog  import SettingsDialog, AppSettings
-from modules.file_watcher     import FileWatcher
-from modules.tab_strings      import StringsTab
-from modules.tab_signatures   import SignaturesTab
+from modules.tab_integrity import IntegrityTab
+from modules.tab_preview import PreviewTab
+from modules.settings_dialog import SettingsDialog, AppSettings
+from modules.file_watcher import FileWatcher
+from modules.tab_strings import StringsTab
+from modules.tab_signatures import SignaturesTab
 from modules.comparison_dialog import ComparisonDialog
-from modules.widgets import copy_to_clipboard, reveal_in_file_manager, open_with_default_app
+from modules.widgets import (
+    copy_to_clipboard,
+    reveal_in_file_manager,
+    open_with_default_app,
+)
 
 logger = logging.getLogger(__name__)
 
 
 # ── Background loader ──────────────────────────────────────────────────────
 
+
 class _Loader(QObject):
-    done  = pyqtSignal(int, object)   # request id, FileInfo
+    done = pyqtSignal(int, object)  # request id, FileInfo
     error = pyqtSignal(int, str)
 
     def __init__(self, path: str, request_id: int):
@@ -65,6 +79,7 @@ class _Loader(QObject):
 
 # ── Main window ────────────────────────────────────────────────────────────
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -73,7 +88,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 600)
         self._app_settings = AppSettings()
         self.setStyleSheet(build_stylesheet(self._app_settings.font_px()))
-        self.setAcceptDrops(True) # Enable drag and drop
+        self.setAcceptDrops(True)  # Enable drag and drop
 
         self._current_info: FileInfo | None = None
         self._loader_thread: QThread | None = None
@@ -118,19 +133,19 @@ class MainWindow(QMainWindow):
         # Content area
         self._tabs = self._make_tab_widget()
 
-        self._tab_overview       = OverviewTab()
-        self._tab_rename         = RenameTab()
-        self._tab_timestamps     = TimestampsTab()
-        self._tab_permissions    = PermissionsTab()
-        self._tab_hashes         = HashesTab()
-        self._tab_audio          = AudioTab()
-        self._tab_batch          = BatchTab()
-        self._tab_advanced       = AdvancedTab()
-        self._tab_preview        = PreviewTab()
+        self._tab_overview = OverviewTab()
+        self._tab_rename = RenameTab()
+        self._tab_timestamps = TimestampsTab()
+        self._tab_permissions = PermissionsTab()
+        self._tab_hashes = HashesTab()
+        self._tab_audio = AudioTab()
+        self._tab_batch = BatchTab()
+        self._tab_advanced = AdvancedTab()
+        self._tab_preview = PreviewTab()
         self._tab_folder_analysis = FolderAnalysisTab()
-        self._tab_integrity      = IntegrityTab()
-        self._tab_strings        = StringsTab()
-        self._tab_signatures     = SignaturesTab()
+        self._tab_integrity = IntegrityTab()
+        self._tab_strings = StringsTab()
+        self._tab_signatures = SignaturesTab()
 
         # Metadata section with nested tabs
         self._metadata_tab = QWidget()
@@ -165,7 +180,9 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._tab_integrity, "Integrity")
         self._tabs.setTabToolTip(0, "Summary of the current file (Ctrl+1)")
         self._tabs.setTabToolTip(1, "Rename, timestamps and permissions (Ctrl+2)")
-        self._tabs.setTabToolTip(2, "Hashes, tags, hex, strings and signatures (Ctrl+3)")
+        self._tabs.setTabToolTip(
+            2, "Hashes, tags, hex, strings and signatures (Ctrl+3)"
+        )
         self._tabs.setTabToolTip(3, "Rename many files at once (Ctrl+4)")
         self._tabs.setTabToolTip(4, "Content preview (Ctrl+5)")
         self._tabs.setTabToolTip(5, "Folder statistics and duplicate finder (Ctrl+6)")
@@ -174,10 +191,18 @@ class MainWindow(QMainWindow):
         # Leaf tabs that receive load()/clear(). Loading is lazy: only the visible
         # tab is populated immediately, the others when they are first shown.
         self._leaf_tabs = [
-            self._tab_overview, self._tab_rename, self._tab_timestamps,
-            self._tab_permissions, self._tab_hashes, self._tab_audio,
-            self._tab_advanced, self._tab_strings, self._tab_signatures,
-            self._tab_preview, self._tab_folder_analysis, self._tab_integrity,
+            self._tab_overview,
+            self._tab_rename,
+            self._tab_timestamps,
+            self._tab_permissions,
+            self._tab_hashes,
+            self._tab_audio,
+            self._tab_advanced,
+            self._tab_strings,
+            self._tab_signatures,
+            self._tab_preview,
+            self._tab_folder_analysis,
+            self._tab_integrity,
         ]
         self._stale_tabs: set = set()
 
@@ -185,8 +210,13 @@ class MainWindow(QMainWindow):
             tw.currentChanged.connect(lambda _=None: self._load_visible_tab())
 
         # Wire file_changed signals → reload
-        for tab in [self._tab_rename, self._tab_timestamps,
-                    self._tab_permissions, self._tab_audio, self._tab_advanced]:
+        for tab in [
+            self._tab_rename,
+            self._tab_timestamps,
+            self._tab_permissions,
+            self._tab_audio,
+            self._tab_advanced,
+        ]:
             tab.file_changed.connect(self._reload_file)
 
         # Cross-tab navigation
@@ -275,13 +305,19 @@ class MainWindow(QMainWindow):
             name = self._tabs.tabText(i)
             act = QAction(name, self)
             # Ctrl+N is the conventional tab shortcut; keep the old Ctrl+Shift+N working too
-            act.setShortcuts([QKeySequence(f"Ctrl+{i + 1}"), QKeySequence(f"Ctrl+Shift+{i + 1}")])
-            act.triggered.connect(lambda checked, idx=i: self._tabs.setCurrentIndex(idx))
+            act.setShortcuts(
+                [QKeySequence(f"Ctrl+{i + 1}"), QKeySequence(f"Ctrl+Shift+{i + 1}")]
+            )
+            act.triggered.connect(
+                lambda checked, idx=i: self._tabs.setCurrentIndex(idx)
+            )
             view_menu.addAction(act)
         view_menu.addSeparator()
         toggle_sidebar = QAction("Toggle Sidebar", self)
         toggle_sidebar.setShortcut(QKeySequence("Ctrl+B"))
-        toggle_sidebar.triggered.connect(lambda: self._sidebar.setVisible(not self._sidebar.isVisible()))
+        toggle_sidebar.triggered.connect(
+            lambda: self._sidebar.setVisible(not self._sidebar.isVisible())
+        )
         view_menu.addAction(toggle_sidebar)
         focus_filter = QAction("Filter Files", self)
         focus_filter.setShortcut(QKeySequence("Ctrl+F"))
@@ -321,15 +357,15 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self):
         sb = self.statusBar()
         sb.setSizeGripEnabled(False)
-        self._status_file  = QLabel("No file loaded")
+        self._status_file = QLabel("No file loaded")
         self._status_file.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._status_file.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self._status_size  = QLabel("")
-        self._status_kind  = QLabel("")
-        self._status_warn  = QLabel("")
+        self._status_size = QLabel("")
+        self._status_kind = QLabel("")
+        self._status_warn = QLabel("")
         self._status_warn.setStyleSheet(f"color: {WARNING};")
-        self._status_sep1  = QLabel("·")
-        self._status_sep2  = QLabel("·")
+        self._status_sep1 = QLabel("·")
+        self._status_sep2 = QLabel("·")
         for w in [self._status_sep1, self._status_sep2]:
             w.setStyleSheet(f"color: {TEXT_MUTED};")
 
@@ -411,16 +447,23 @@ class MainWindow(QMainWindow):
 
     def _on_file_changed_externally(self, path: str):
         """Handle external file changes - auto-refresh if enabled."""
-        if not (self._current_info and os.path.normcase(self._current_info.path) == os.path.normcase(path)):
+        if not (
+            self._current_info
+            and os.path.normcase(self._current_info.path) == os.path.normcase(path)
+        ):
             return
         if not os.path.exists(path):
-            self.statusBar().showMessage("The current file was deleted or moved by another program.", 6000)
+            self.statusBar().showMessage(
+                "The current file was deleted or moved by another program.", 6000
+            )
             return
         if self._app_settings.auto_refresh():
             self.statusBar().showMessage("File changed externally — reloading…", 3000)
             self._reload_file(path)
         else:
-            self.statusBar().showMessage("File changed on disk — press F5 to reload.", 6000)
+            self.statusBar().showMessage(
+                "File changed on disk — press F5 to reload.", 6000
+            )
 
     def _reload_file(self, path: str):
         """Reload after an in-place modification (debounced)."""
@@ -441,7 +484,7 @@ class MainWindow(QMainWindow):
             self._load_file(self._current_info.path)
 
     def _close_file(self):
-        self._request_id += 1      # ignore any load still in flight
+        self._request_id += 1  # ignore any load still in flight
         self._current_info = None
         self._file_watcher.stop_watching()
         self._populate_tabs(None)
@@ -452,7 +495,7 @@ class MainWindow(QMainWindow):
     def _on_info_loaded(self, request_id: int, info: FileInfo):
         QApplication.restoreOverrideCursor()
         if request_id != self._request_id:
-            return   # a newer file was requested meanwhile — drop this stale result
+            return  # a newer file was requested meanwhile — drop this stale result
         self._current_info = info
         self._file_watcher.watch_file(info.path)
         self._sidebar.add_recent(info.path)
@@ -464,7 +507,7 @@ class MainWindow(QMainWindow):
         # Kept for backwards compatibility; per-thread cleanup now lives in _forget_thread
         pass
 
-    def _populate_tabs(self, info: FileInfo):
+    def _populate_tabs(self, info: FileInfo | None):
         if info is None:
             self._stale_tabs.clear()
             for tab in self._leaf_tabs:
@@ -498,7 +541,9 @@ class MainWindow(QMainWindow):
                 tab.load(self._current_info)
             except Exception:
                 logger.exception("Tab %s failed to load", type(tab).__name__)
-                self.statusBar().showMessage(f"{type(tab).__name__} could not display this file.", 5000)
+                self.statusBar().showMessage(
+                    f"{type(tab).__name__} could not display this file.", 5000
+                )
 
     def _navigate_to(self, name: str):
         """Jump to a tab by name (used by Overview quick actions)."""
@@ -525,16 +570,26 @@ class MainWindow(QMainWindow):
         for w in (self._status_sep1, self._status_kind, self._status_size):
             w.setVisible(True)
         mismatch = info.extension_mismatch
-        self._status_warn.setText(f"⚠ Content looks like {info.detected_type}" if mismatch else "")
+        self._status_warn.setText(
+            f"⚠ Content looks like {info.detected_type}" if mismatch else ""
+        )
         self._status_warn.setVisible(mismatch)
         self._status_sep2.setVisible(mismatch)
         self.statusBar().clearMessage()
         self.setWindowTitle(f"{info.name} — FileForge")
 
     def _update_status_for_closed(self):
-        self._status_file.setText("No file loaded — drop a file anywhere or press Ctrl+O")
+        self._status_file.setText(
+            "No file loaded — drop a file anywhere or press Ctrl+O"
+        )
         self._status_file.setToolTip("")
-        for w in (self._status_sep1, self._status_sep2, self._status_kind, self._status_size, self._status_warn):
+        for w in (
+            self._status_sep1,
+            self._status_sep2,
+            self._status_kind,
+            self._status_size,
+            self._status_warn,
+        ):
             w.setVisible(False)
         self._status_kind.setText("")
         self._status_size.setText("")
@@ -582,7 +637,9 @@ class MainWindow(QMainWindow):
 
     def _open_current_externally(self):
         if self._current_info and not open_with_default_app(self._current_info.path):
-            self.statusBar().showMessage("No application is associated with this file type.", 4000)
+            self.statusBar().showMessage(
+                "No application is associated with this file type.", 4000
+            )
 
     def _focus_filter(self):
         self._sidebar.setVisible(True)
@@ -600,13 +657,15 @@ class MainWindow(QMainWindow):
     def _open_log_folder(self):
         try:
             from modules.integrity_tools import ensure_app_data_dir
+
             open_with_default_app(str(ensure_app_data_dir()))
         except Exception as e:
             self._show_error(str(e))
 
     def _show_about(self):
         QMessageBox.about(
-            self, "About FileForge",
+            self,
+            "About FileForge",
             f"<b>FileForge v{__version__}</b><br>"
             "A comprehensive file properties and analysis manager.<br><br>"
             "<b>Core Features:</b><br>"
@@ -632,7 +691,7 @@ class MainWindow(QMainWindow):
             "Windows, macOS, Linux<br><br>"
             "<b>Credits:</b><br>"
             "Hana Eun-Seo, Florian van den Bersselaar,<br>"
-            "Simon Roberge, Anna Zieleman"
+            "Simon Roberge, Anna Zieleman",
         )
 
     def _show_settings(self):

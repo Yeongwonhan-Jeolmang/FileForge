@@ -7,19 +7,30 @@ from __future__ import annotations
 import os
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QScrollArea,
-    QSpinBox, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QAbstractItemView, QTextEdit,
-    QSplitter, QPlainTextEdit, QComboBox, QHeaderView,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QLineEdit,
+    QScrollArea,
+    QSpinBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QMessageBox,
+    QAbstractItemView,
+    QPlainTextEdit,
+    QComboBox,
+    QHeaderView,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QColor, QFontDatabase
+from PyQt5.QtGui import QColor, QFontDatabase
 
 from modules.file_info import FileInfo
 from modules.file_ops import truncate_file, zero_file
 from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import BG_CARD, BORDER, TEXT_MUTED, ACCENT, TEXT_SECONDARY, HEX_BG, HEX_FG, BG_MID
+from modules.theme import BORDER, TEXT_MUTED, TEXT_SECONDARY, HEX_BG, HEX_FG
 from modules.file_info import human_size
 
 
@@ -97,7 +108,9 @@ class AdvancedTab(QWidget):
         nav.addWidget(QLabel("Offset:"))
         self._hex_offset_edit = QLineEdit("0x0")
         self._hex_offset_edit.setFixedWidth(130)
-        self._hex_offset_edit.setToolTip("Hex (0x1F0) or decimal (496). Press Enter to jump.")
+        self._hex_offset_edit.setToolTip(
+            "Hex (0x1F0) or decimal (496). Press Enter to jump."
+        )
         self._hex_offset_edit.returnPressed.connect(self._jump_hex)
         nav.addWidget(self._hex_offset_edit)
         self._hex_page_combo = QComboBox()
@@ -114,8 +127,12 @@ class AdvancedTab(QWidget):
         self._hex_first.setToolTip("Start of file")
         self._hex_last.setToolTip("End of file")
         self._hex_first.clicked.connect(lambda: self._goto_hex(0))
-        self._hex_prev.clicked.connect(lambda: self._goto_hex(self._hex_offset - self._page_size()))
-        self._hex_next.clicked.connect(lambda: self._goto_hex(self._hex_offset + self._page_size()))
+        self._hex_prev.clicked.connect(
+            lambda: self._goto_hex(self._hex_offset - self._page_size())
+        )
+        self._hex_next.clicked.connect(
+            lambda: self._goto_hex(self._hex_offset + self._page_size())
+        )
         self._hex_last.clicked.connect(lambda: self._goto_hex(self._last_page_offset()))
         for b in (self._hex_first, self._hex_prev, self._hex_next, self._hex_last):
             nav.addWidget(b)
@@ -143,8 +160,15 @@ class AdvancedTab(QWidget):
         refresh_hex.clicked.connect(self._load_hex)
         hl.addWidget(refresh_hex, 0, Qt.AlignRight)
         self._hex_offset = 0
-        self._hex_nav = [self._hex_offset_edit, self._hex_page_combo, self._hex_first,
-                         self._hex_prev, self._hex_next, self._hex_last, refresh_hex]
+        self._hex_nav = [
+            self._hex_offset_edit,
+            self._hex_page_combo,
+            self._hex_first,
+            self._hex_prev,
+            self._hex_next,
+            self._hex_last,
+            refresh_hex,
+        ]
         layout.addWidget(hex_card)
 
         # ── Extended attributes ────────────────────────────────────────
@@ -197,7 +221,11 @@ class AdvancedTab(QWidget):
 
         layout.addStretch()
 
-        self._editable = [self._trunc_btn, self._trunc_spin, self._zero_btn] + self._hex_nav
+        self._editable = [
+            self._trunc_btn,
+            self._trunc_spin,
+            self._zero_btn,
+        ] + self._hex_nav
         self._set_enabled(False)
 
     # ── Public ─────────────────────────────────────────────────────────
@@ -225,27 +253,35 @@ class AdvancedTab(QWidget):
     # ── Slots ─────────────────────────────────────────────────────────
 
     def _do_truncate(self):
-        if not self._info: return
+        if not self._info:
+            return
         size = self._trunc_spin.value()
         reply = QMessageBox.question(
-            self, "Confirm Truncate",
+            self,
+            "Confirm Truncate",
             f"Truncate '{self._info.name}' to {size:,} bytes?\nThis may destroy data.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
-        if reply != QMessageBox.Yes: return
+        if reply != QMessageBox.Yes:
+            return
         ok, msg = truncate_file(self._info.path, size)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
             self.file_changed.emit(self._info.path)
 
     def _do_zero(self):
-        if not self._info: return
+        if not self._info:
+            return
         reply = QMessageBox.question(
-            self, "Confirm Zero",
+            self,
+            "Confirm Zero",
             f"Empty '{self._info.name}'? ALL content will be deleted.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
-        if reply != QMessageBox.Yes: return
+        if reply != QMessageBox.Yes:
+            return
         ok, msg = zero_file(self._info.path)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
@@ -282,7 +318,8 @@ class AdvancedTab(QWidget):
         self._goto_hex(offset - offset % 16)
 
     def _load_hex(self):
-        if not self._info: return
+        if not self._info:
+            return
         page = self._page_size()
         try:
             with open(self._info.path, "rb") as f:
@@ -292,17 +329,20 @@ class AdvancedTab(QWidget):
             width = max(8, len(f"{size:X}"))
             lines = []
             for i in range(0, len(data), 16):
-                chunk = data[i:i + 16]
+                chunk = data[i : i + 16]
                 hex_bytes = [f"{b:02X}" for b in chunk]
                 # Gap after 8 bytes, like xxd / hexdump -C
                 hex_part = " ".join(hex_bytes[:8]) + "  " + " ".join(hex_bytes[8:])
                 asc_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
-                lines.append(f"{self._hex_offset + i:0{width}X}  {hex_part:<48}  |{asc_part}|")
+                lines.append(
+                    f"{self._hex_offset + i:0{width}X}  {hex_part:<48}  |{asc_part}|"
+                )
             self._hex_view.setPlainText("\n".join(lines) if lines else "(end of file)")
             end = self._hex_offset + len(data)
             self._hex_offset_edit.setText(f"0x{self._hex_offset:X}")
             self._hex_pos_lbl.setText(
-                f"0x{self._hex_offset:X}–0x{max(end - 1, 0):X}  of  {size:,} bytes ({human_size(size)})")
+                f"0x{self._hex_offset:X}–0x{max(end - 1, 0):X}  of  {size:,} bytes ({human_size(size)})"
+            )
             self._hex_prev.setEnabled(self._hex_offset > 0)
             self._hex_first.setEnabled(self._hex_offset > 0)
             self._hex_next.setEnabled(end < size)

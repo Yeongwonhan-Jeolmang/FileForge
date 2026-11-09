@@ -6,8 +6,15 @@ from __future__ import annotations
 import platform
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QScrollArea, QGridLayout,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QLineEdit,
+    QScrollArea,
+    QGridLayout,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
 from PyQt5.QtGui import QRegExpValidator
@@ -15,36 +22,81 @@ from PyQt5.QtGui import QRegExpValidator
 from modules.file_info import FileInfo, PermissionInfo
 from modules.file_ops import set_permissions_bits, set_permissions_octal
 from modules.widgets import SectionLabel, PermToggle, StatusBanner, Card
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
+from modules.theme import BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
 
 
 # ── Preset permission sets ─────────────────────────────────────────────────
 PRESETS = {
-    "644 — Default File":   ("0o644", dict(
-        owner_read=True, owner_write=True, owner_exec=False,
-        group_read=True, group_write=False, group_exec=False,
-        other_read=True, other_write=False, other_exec=False,
-    )),
-    "755 — Executable":     ("0o755", dict(
-        owner_read=True, owner_write=True, owner_exec=True,
-        group_read=True, group_write=False, group_exec=True,
-        other_read=True, other_write=False, other_exec=True,
-    )),
-    "600 — Private":        ("0o600", dict(
-        owner_read=True, owner_write=True, owner_exec=False,
-        group_read=False, group_write=False, group_exec=False,
-        other_read=False, other_write=False, other_exec=False,
-    )),
-    "777 — Full Access":    ("0o777", dict(
-        owner_read=True, owner_write=True, owner_exec=True,
-        group_read=True, group_write=True, group_exec=True,
-        other_read=True, other_write=True, other_exec=True,
-    )),
-    "400 — Read-Only":      ("0o400", dict(
-        owner_read=True, owner_write=False, owner_exec=False,
-        group_read=False, group_write=False, group_exec=False,
-        other_read=False, other_write=False, other_exec=False,
-    )),
+    "644 — Default File": (
+        "0o644",
+        dict(
+            owner_read=True,
+            owner_write=True,
+            owner_exec=False,
+            group_read=True,
+            group_write=False,
+            group_exec=False,
+            other_read=True,
+            other_write=False,
+            other_exec=False,
+        ),
+    ),
+    "755 — Executable": (
+        "0o755",
+        dict(
+            owner_read=True,
+            owner_write=True,
+            owner_exec=True,
+            group_read=True,
+            group_write=False,
+            group_exec=True,
+            other_read=True,
+            other_write=False,
+            other_exec=True,
+        ),
+    ),
+    "600 — Private": (
+        "0o600",
+        dict(
+            owner_read=True,
+            owner_write=True,
+            owner_exec=False,
+            group_read=False,
+            group_write=False,
+            group_exec=False,
+            other_read=False,
+            other_write=False,
+            other_exec=False,
+        ),
+    ),
+    "777 — Full Access": (
+        "0o777",
+        dict(
+            owner_read=True,
+            owner_write=True,
+            owner_exec=True,
+            group_read=True,
+            group_write=True,
+            group_exec=True,
+            other_read=True,
+            other_write=True,
+            other_exec=True,
+        ),
+    ),
+    "400 — Read-Only": (
+        "0o400",
+        dict(
+            owner_read=True,
+            owner_write=False,
+            owner_exec=False,
+            group_read=False,
+            group_write=False,
+            group_exec=False,
+            other_read=False,
+            other_write=False,
+            other_exec=False,
+        ),
+    ),
 }
 
 
@@ -84,14 +136,16 @@ class PermissionsTab(QWidget):
         headers = ["", "Read (r)", "Write (w)", "Execute (x)"]
         for c, h in enumerate(headers):
             lbl = QLabel(h)
-            lbl.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px; letter-spacing: 1px;")
+            lbl.setStyleSheet(
+                f"color: {TEXT_MUTED}; font-size: 11px; letter-spacing: 1px;"
+            )
             lbl.setAlignment(Qt.AlignCenter)
             gl.addWidget(lbl, 0, c)
 
         categories = [
             ("Owner", "owner_read", "owner_write", "owner_exec"),
             ("Group", "group_read", "group_write", "group_exec"),
-            ("Others","other_read", "other_write", "other_exec"),
+            ("Others", "other_read", "other_write", "other_exec"),
         ]
         for r, (label, rk, wk, xk) in enumerate(categories, start=1):
             cat_lbl = QLabel(label)
@@ -115,10 +169,14 @@ class PermissionsTab(QWidget):
         self._octal_lbl = QLabel("Current:")
         self._octal_lbl.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._octal_cur = QLabel("—")
-        self._octal_cur.setStyleSheet(f"color: {ACCENT}; font-size: 16px; font-weight: bold;")
+        self._octal_cur.setStyleSheet(
+            f"color: {ACCENT}; font-size: 16px; font-weight: bold;"
+        )
         self._octal_cur.setFixedWidth(80)
         self._symbolic_lbl = QLabel("")
-        self._symbolic_lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; letter-spacing: 1px;")
+        self._symbolic_lbl.setStyleSheet(
+            f"color: {TEXT_SECONDARY}; letter-spacing: 1px;"
+        )
         self._symbolic_lbl.setToolTip("Symbolic form of the mode being edited")
 
         sep = QLabel("|")
@@ -130,7 +188,9 @@ class PermissionsTab(QWidget):
         # Up to 4 octal digits (setuid/setgid/sticky + rwx×3). The old max length of 4
         # silently truncated values like "0o644" to "0o64" → wrong permissions applied.
         self._octal_edit.setMaxLength(4)
-        self._octal_edit.setValidator(QRegExpValidator(QRegExp("[0-7]{1,4}"), self._octal_edit))
+        self._octal_edit.setValidator(
+            QRegExpValidator(QRegExp("[0-7]{1,4}"), self._octal_edit)
+        )
         self._octal_edit.returnPressed.connect(self._apply_octal)
 
         apply_oct = QPushButton("Apply Octal")
@@ -162,7 +222,9 @@ class PermissionsTab(QWidget):
         pl.setSpacing(8)
         for name, (octal, bits) in PRESETS.items():
             btn = QPushButton(name)
-            btn.clicked.connect(lambda checked, b=bits, o=octal: self._load_preset(b, o))
+            btn.clicked.connect(
+                lambda checked, b=bits, o=octal: self._load_preset(b, o)
+            )
             pl.addWidget(btn)
         layout.addWidget(preset_card)
 
@@ -173,7 +235,9 @@ class PermissionsTab(QWidget):
         self._set_enabled(False)
 
         if platform.system() == "Windows":
-            note = QLabel("⚠  Windows: only the read-only flag is controlled via permissions.")
+            note = QLabel(
+                "⚠  Windows: only the read-only flag is controlled via permissions."
+            )
             note.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
             layout.insertWidget(0, note)
 
@@ -200,10 +264,17 @@ class PermissionsTab(QWidget):
         # compute octal from bits
         mode = 0
         import stat
+
         mapping = {
-            "owner_read": stat.S_IRUSR, "owner_write": stat.S_IWUSR, "owner_exec": stat.S_IXUSR,
-            "group_read": stat.S_IRGRP, "group_write": stat.S_IWGRP, "group_exec": stat.S_IXGRP,
-            "other_read": stat.S_IROTH, "other_write": stat.S_IWOTH, "other_exec": stat.S_IXOTH,
+            "owner_read": stat.S_IRUSR,
+            "owner_write": stat.S_IWUSR,
+            "owner_exec": stat.S_IXUSR,
+            "group_read": stat.S_IRGRP,
+            "group_write": stat.S_IWGRP,
+            "group_exec": stat.S_IXGRP,
+            "other_read": stat.S_IROTH,
+            "other_write": stat.S_IWOTH,
+            "other_exec": stat.S_IXOTH,
         }
         for k, v in bits.items():
             if v:
@@ -219,16 +290,20 @@ class PermissionsTab(QWidget):
 
     def _confirm_lockout(self) -> bool:
         from PyQt5.QtWidgets import QMessageBox
+
         reply = QMessageBox.warning(
-            self, "Remove owner read access?",
+            self,
+            "Remove owner read access?",
             "These permissions remove read access for the file's owner (you).\n"
             "You may no longer be able to open the file. Continue?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
         return reply == QMessageBox.Yes
 
     def _apply_bits(self):
-        if not self._info: return
+        if not self._info:
+            return
         bits = self._read_toggles()
         if not bits.get("owner_read") and not self._confirm_lockout():
             return
@@ -238,7 +313,8 @@ class PermissionsTab(QWidget):
             self.file_changed.emit(self._info.path)
 
     def _apply_octal(self):
-        if not self._info: return
+        if not self._info:
+            return
         octal = self._octal_edit.text().strip()
         if not octal:
             self._banner.show_message("Enter an octal value.", "warning")
@@ -257,6 +333,7 @@ class PermissionsTab(QWidget):
 
     def _update_preview(self, mode: int):
         import stat as _stat
+
         self._symbolic_lbl.setText(_stat.filemode(_stat.S_IFREG | mode)[1:])
 
     # ── Helpers ────────────────────────────────────────────────────────

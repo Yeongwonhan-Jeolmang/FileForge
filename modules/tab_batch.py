@@ -18,23 +18,45 @@ import time
 from pathlib import Path
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QCheckBox,
-    QScrollArea, QTreeWidget, QTreeWidgetItem,
-    QFileDialog, QAbstractItemView, QSplitter,
-    QComboBox, QSpinBox, QMessageBox, QHeaderView,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QLineEdit,
+    QCheckBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QFileDialog,
+    QAbstractItemView,
+    QSplitter,
+    QComboBox,
+    QSpinBox,
+    QMessageBox,
+    QHeaderView,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QColor
 
-from modules.file_ops import batch_rename_preview, batch_rename_apply, batch_rename_to, batch_rename_conflicts
+from modules.file_ops import batch_rename_to, batch_rename_conflicts
 from modules.widgets import SectionLabel, StatusBanner, Card
 from modules.theme import (
-    BG_CARD, BORDER, SUCCESS, ERROR, ACCENT, WARNING,
-    TEXT_SECONDARY, BG_PANEL, TEXT_MUTED, TEXT_PRIMARY,
+    SUCCESS,
+    ERROR,
+    ACCENT,
+    TEXT_SECONDARY,
+    TEXT_MUTED,
 )
 
-_CASES = ["Case: unchanged", "lowercase", "UPPERCASE", "Title Case", "snake_case", "kebab-case"]
+_CASES = [
+    "Case: unchanged",
+    "lowercase",
+    "UPPERCASE",
+    "Title Case",
+    "snake_case",
+    "kebab-case",
+]
 _TOKEN_RE = re.compile(r"\{(n|name|ext|date|parent)\}")
 
 
@@ -44,7 +66,7 @@ class BatchTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._paths: list[str] = []
-        self._undo_stack: list[list[tuple[str, str]]] = []   # [(new_path, old_name)]
+        self._undo_stack: list[list[tuple[str, str]]] = []  # [(new_path, old_name)]
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -96,7 +118,9 @@ class BatchTab(QWidget):
         lbl_find.setFixedWidth(70)
         lbl_find.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._find_edit = QLineEdit()
-        self._find_edit.setPlaceholderText("Text or regex pattern… (leave empty to replace the whole name)")
+        self._find_edit.setPlaceholderText(
+            "Text or regex pattern… (leave empty to replace the whole name)"
+        )
         self._find_edit.setClearButtonEnabled(True)
         self._regex_chk = QCheckBox("Regex")
         self._ignore_case_chk = QCheckBox("Ignore case")
@@ -111,7 +135,9 @@ class BatchTab(QWidget):
         lbl_rep.setFixedWidth(70)
         lbl_rep.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._replace_edit = QLineEdit()
-        self._replace_edit.setPlaceholderText("Replacement (blank = delete). Tokens: {n} {name} {ext} {date} {parent}")
+        self._replace_edit.setPlaceholderText(
+            "Replacement (blank = delete). Tokens: {n} {name} {ext} {date} {parent}"
+        )
         self._replace_edit.setClearButtonEnabled(True)
         self._replace_edit.setToolTip(
             "{n}       running number\n"
@@ -133,7 +159,9 @@ class BatchTab(QWidget):
         self._strip_chk = QCheckBox("Strip whitespace")
         self._keep_ext_chk = QCheckBox("Keep extension")
         self._keep_ext_chk.setChecked(True)
-        self._keep_ext_chk.setToolTip("Apply find/replace and case changes to the name only, not the extension")
+        self._keep_ext_chk.setToolTip(
+            "Apply find/replace and case changes to the name only, not the extension"
+        )
         num_lbl = QLabel("{n} start:")
         num_lbl.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._num_start = QSpinBox()
@@ -199,7 +227,9 @@ class BatchTab(QWidget):
         self._table.header().setSectionResizeMode(1, QHeaderView.Stretch)
         self._table.header().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self._table.itemDoubleClicked.connect(self._on_row_double_clicked)
-        self._table.setToolTip("Double-click a row to open that file. Drop files here to add them.")
+        self._table.setToolTip(
+            "Double-click a row to open that file. Drop files here to add them."
+        )
         bl.addWidget(self._table)
         splitter.addWidget(bottom)
 
@@ -210,11 +240,17 @@ class BatchTab(QWidget):
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(180)
         self._preview_timer.timeout.connect(self._preview)
-        for sig in (self._find_edit.textChanged, self._replace_edit.textChanged,
-                    self._regex_chk.toggled, self._ignore_case_chk.toggled,
-                    self._strip_chk.toggled, self._keep_ext_chk.toggled,
-                    self._case_combo.currentIndexChanged,
-                    self._num_start.valueChanged, self._num_pad.valueChanged):
+        for sig in (
+            self._find_edit.textChanged,
+            self._replace_edit.textChanged,
+            self._regex_chk.toggled,
+            self._ignore_case_chk.toggled,
+            self._strip_chk.toggled,
+            self._keep_ext_chk.toggled,
+            self._case_combo.currentIndexChanged,
+            self._num_start.valueChanged,
+            self._num_pad.valueChanged,
+        ):
             sig.connect(lambda *_: self._preview_timer.start())
 
         self._update_count()
@@ -253,7 +289,9 @@ class BatchTab(QWidget):
         d = QFileDialog.getExistingDirectory(self, "Select Folder")
         if d:
             added = self.add_paths([], [d])
-            self._banner.show_message(f"Added {added} file(s) from {os.path.basename(d) or d}.", "info", 2500)
+            self._banner.show_message(
+                f"Added {added} file(s) from {os.path.basename(d) or d}.", "info", 2500
+            )
 
     @staticmethod
     def _files_in(folder: str, recursive: bool) -> list[str]:
@@ -261,16 +299,27 @@ class BatchTab(QWidget):
         if recursive:
             for root, dirs, files in os.walk(folder):
                 dirs[:] = sorted(d for d in dirs if not d.startswith("."))
-                out.extend(os.path.join(root, f) for f in sorted(files) if not f.startswith("."))
+                out.extend(
+                    os.path.join(root, f)
+                    for f in sorted(files)
+                    if not f.startswith(".")
+                )
         else:
             try:
-                out = [str(p) for p in sorted(Path(folder).iterdir()) if p.is_file() and not p.name.startswith(".")]
+                out = [
+                    str(p)
+                    for p in sorted(Path(folder).iterdir())
+                    if p.is_file() and not p.name.startswith(".")
+                ]
             except OSError:
                 pass
         return out
 
     def _remove_selected(self):
-        rows = sorted({self._table.indexOfTopLevelItem(i) for i in self._table.selectedItems()}, reverse=True)
+        rows = sorted(
+            {self._table.indexOfTopLevelItem(i) for i in self._table.selectedItems()},
+            reverse=True,
+        )
         for r in rows:
             if 0 <= r < len(self._paths):
                 del self._paths[r]
@@ -308,25 +357,36 @@ class BatchTab(QWidget):
         new_names = [new for _, new in pairs]
         changes = sum(1 for old, new in pairs if old != new)
         if not changes:
-            self._banner.show_message("Nothing to rename — every name is unchanged.", "info")
+            self._banner.show_message(
+                "Nothing to rename — every name is unchanged.", "info"
+            )
             return
         problems = batch_rename_conflicts(self._paths, new_names)
         if problems:
             self._populate_table(pairs, apply_mode=False)
             self._banner.show_message(
-                f"{len(problems)} conflict(s) — fix the highlighted rows before applying.", "error")
+                f"{len(problems)} conflict(s) — fix the highlighted rows before applying.",
+                "error",
+            )
             return
         if changes >= 20:
             reply = QMessageBox.question(
-                self, "Confirm Batch Rename", f"Rename {changes} files?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                self,
+                "Confirm Batch Rename",
+                f"Rename {changes} files?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
             if reply != QMessageBox.Yes:
                 return
 
         results = batch_rename_to(self._paths, new_names)
         # Rebuild paths list with new paths for successes
-        undo = [(new_path, Path(orig).name) for orig, ok, msg, new_path in results
-                if ok and new_path != orig]
+        undo = [
+            (new_path, Path(orig).name)
+            for orig, ok, msg, new_path in results
+            if ok and new_path != orig
+        ]
         if undo:
             self._undo_stack.append(undo)
         self._undo_btn.setEnabled(bool(self._undo_stack))
@@ -336,8 +396,11 @@ class BatchTab(QWidget):
         ok_count = len(undo)
         failed = sum(1 for _, ok, _, _ in results if not ok)
         self._banner.show_message(
-            f"Renamed {ok_count} / {changes} files." + (f"  {failed} failed." if failed else ""),
-            "success" if ok_count and not failed else ("warning" if ok_count else "error"),
+            f"Renamed {ok_count} / {changes} files."
+            + (f"  {failed} failed." if failed else ""),
+            "success"
+            if ok_count and not failed
+            else ("warning" if ok_count else "error"),
         )
 
     def _undo(self):
@@ -351,8 +414,10 @@ class BatchTab(QWidget):
         self._paths = [mapping.get(p, p) for p in self._paths]
         self._undo_btn.setEnabled(bool(self._undo_stack))
         ok = sum(1 for _, ok, _, _ in results if ok)
-        self._banner.show_message(f"Undo: restored {ok} / {len(results)} name(s).",
-                                  "success" if ok == len(results) else "warning")
+        self._banner.show_message(
+            f"Undo: restored {ok} / {len(results)} name(s).",
+            "success" if ok == len(results) else "warning",
+        )
         self._preview()
 
     def _on_row_double_clicked(self, item: QTreeWidgetItem, col: int):
@@ -383,6 +448,7 @@ class BatchTab(QWidget):
             if token == "parent":
                 return p.parent.name
             return m.group(0)
+
         return _TOKEN_RE.sub(repl, template)
 
     @staticmethod
@@ -395,7 +461,9 @@ class BatchTab(QWidget):
             return text.title()
         if mode in (4, 5):
             sep = "_" if mode == 4 else "-"
-            words = re.findall(r"[A-Za-z0-9]+", re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text))
+            words = re.findall(
+                r"[A-Za-z0-9]+", re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
+            )
             return sep.join(w.lower() for w in words) or text
         return text
 
@@ -403,7 +471,9 @@ class BatchTab(QWidget):
         find = self._find_edit.text()
         use_regex = self._regex_chk.isChecked()
         flags = re.IGNORECASE if self._ignore_case_chk.isChecked() else 0
-        pattern = re.compile(find if use_regex else re.escape(find), flags) if find else None
+        pattern = (
+            re.compile(find if use_regex else re.escape(find), flags) if find else None
+        )
         keep_ext = self._keep_ext_chk.isChecked()
         case_mode = self._case_combo.currentIndex()
 
@@ -419,7 +489,7 @@ class BatchTab(QWidget):
                 else:
                     new_stem = pattern.sub(lambda m: replacement, stem)
             elif replacement:
-                new_stem = replacement            # empty Find: template replaces the whole name
+                new_stem = replacement  # empty Find: template replaces the whole name
             else:
                 new_stem = stem
 
@@ -455,10 +525,14 @@ class BatchTab(QWidget):
         self._table.addTopLevelItems(items)
         self._table.setUpdatesEnabled(True)
         if problems:
-            self._summary_lbl.setText(f"{changes} to rename · {len(problems)} conflict(s)")
+            self._summary_lbl.setText(
+                f"{changes} to rename · {len(problems)} conflict(s)"
+            )
             self._summary_lbl.setStyleSheet(f"color: {ERROR};")
         else:
-            self._summary_lbl.setText(f"{changes} of {len(pairs)} file(s) will be renamed")
+            self._summary_lbl.setText(
+                f"{changes} of {len(pairs)} file(s) will be renamed"
+            )
             self._summary_lbl.setStyleSheet(f"color: {TEXT_SECONDARY};")
         self._apply_btn.setEnabled(changes > 0 and not problems)
 

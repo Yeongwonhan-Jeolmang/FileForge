@@ -7,25 +7,44 @@ import re
 import threading
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QComboBox,
-    QSpinBox, QListView, QTextEdit, QFileDialog,
-    QSplitter, QCheckBox, QProgressBar, QAbstractItemView, QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QComboBox,
+    QSpinBox,
+    QListView,
+    QTextEdit,
+    QFileDialog,
+    QSplitter,
+    QCheckBox,
+    QProgressBar,
+    QAbstractItemView,
+    QApplication,
 )
 from PyQt5.QtCore import (
-    Qt, QThread, pyqtSignal, QObject, QAbstractListModel, QModelIndex, QTimer, QVariant,
+    Qt,
+    QThread,
+    pyqtSignal,
+    QObject,
+    QAbstractListModel,
+    QModelIndex,
+    QTimer,
+    QVariant,
 )
-from PyQt5.QtGui import QFont, QColor
 
 from modules.file_info import FileInfo
-from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED, HEX_OFFSET
-from modules.strings_extractor import extract_strings, filter_strings
+from modules.widgets import StatusBanner, Card
+from modules.theme import TEXT_MUTED
+from modules.strings_extractor import extract_strings
 
 MAX_STRINGS = 500_000
 
 
 # ── Worker thread ─────────────────────────────────────────────────────────
+
 
 class StringsWorker(QObject):
     progress = pyqtSignal(int)  # Progress percentage
@@ -45,8 +64,13 @@ class StringsWorker(QObject):
     def run(self):
         try:
             self.progress.emit(10)
-            strings = extract_strings(self._file_path, self._min_length, self._encoding,
-                                      max_results=MAX_STRINGS, cancel_cb=self._stop.is_set)
+            strings = extract_strings(
+                self._file_path,
+                self._min_length,
+                self._encoding,
+                max_results=MAX_STRINGS,
+                cancel_cb=self._stop.is_set,
+            )
             self.progress.emit(100)
             self.finished.emit(strings)
         except Exception as e:
@@ -54,6 +78,7 @@ class StringsWorker(QObject):
 
 
 # ── Virtual list model ────────────────────────────────────────────────────
+
 
 class _StringsModel(QAbstractListModel):
     """
@@ -65,7 +90,7 @@ class _StringsModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._all: list[tuple[int, str]] = []
-        self._rows: list[int] = []        # indexes into _all
+        self._rows: list[int] = []  # indexes into _all
 
     def set_strings(self, strings: list[tuple[int, str]]):
         self.beginResetModel()
@@ -103,6 +128,7 @@ class _StringsModel(QAbstractListModel):
 
 
 # ── Tab ───────────────────────────────────────────────────────────────────
+
 
 class StringsTab(QWidget):
     def __init__(self, parent=None):
@@ -144,7 +170,9 @@ class StringsTab(QWidget):
         controls_layout.addWidget(QLabel("Encoding:"))
         self._encoding_combo = QComboBox()
         self._encoding_combo.addItems(["ascii", "utf-8", "utf-16", "latin-1"])
-        self._encoding_combo.setToolTip("utf-16 = little-endian wide strings (common in Windows binaries)")
+        self._encoding_combo.setToolTip(
+            "utf-16 = little-endian wide strings (common in Windows binaries)"
+        )
         self._encoding_combo.currentTextChanged.connect(self._update_strings)
         controls_layout.addWidget(self._encoding_combo)
 
@@ -166,7 +194,7 @@ class StringsTab(QWidget):
 
         # Progress bar
         self._progress = QProgressBar()
-        self._progress.setRange(0, 0)      # indeterminate: extraction is streamed
+        self._progress.setRange(0, 0)  # indeterminate: extraction is streamed
         self._progress.setTextVisible(False)
         self._progress.setFixedHeight(6)
         self._progress.setVisible(False)
@@ -210,10 +238,12 @@ class StringsTab(QWidget):
         self._model = _StringsModel(self)
         self._strings_list = QListView()
         self._strings_list.setModel(self._model)
-        self._strings_list.setUniformItemSizes(True)     # big speed-up for long lists
+        self._strings_list.setUniformItemSizes(True)  # big speed-up for long lists
         self._strings_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._strings_list.setAlternatingRowColors(True)
-        self._strings_list.selectionModel().currentChanged.connect(lambda *_: self._on_string_selected())
+        self._strings_list.selectionModel().currentChanged.connect(
+            lambda *_: self._on_string_selected()
+        )
         list_layout.addWidget(self._strings_list, 1)
         splitter.addWidget(list_box)
 
@@ -235,7 +265,9 @@ class StringsTab(QWidget):
 
         self._details_text = QTextEdit()
         self._details_text.setReadOnly(True)
-        self._details_text.setPlaceholderText("Select a string to see its offset, length and bytes.")
+        self._details_text.setPlaceholderText(
+            "Select a string to see its offset, length and bytes."
+        )
         details_layout.addWidget(self._details_text, 1)
 
         splitter.addWidget(details_box)
@@ -252,7 +284,9 @@ class StringsTab(QWidget):
         self._extracted_params = None
         self._model.set_strings([])
         self._details_text.clear()
-        self._count_lbl.setText(f"Click “Extract Strings” to scan {info.name} ({info.size_human}).")
+        self._count_lbl.setText(
+            f"Click “Extract Strings” to scan {info.name} ({info.size_human})."
+        )
         self._set_enabled(True)
 
     def clear(self):
@@ -288,7 +322,9 @@ class StringsTab(QWidget):
         worker.moveToThread(thread)
 
         thread.started.connect(worker.run)
-        worker.finished.connect(lambda strings, p=params: self._on_strings_extracted(strings, p))
+        worker.finished.connect(
+            lambda strings, p=params: self._on_strings_extracted(strings, p)
+        )
         worker.finished.connect(thread.quit)
         worker.error.connect(lambda e: self._banner.show_message(e, "error"))
         worker.error.connect(thread.quit)
@@ -313,14 +349,20 @@ class StringsTab(QWidget):
             self._thread.deleteLater()
             self._thread = None
 
-    def _on_strings_extracted(self, strings: list, params: tuple = None):
+    def _on_strings_extracted(self, strings: list, params: tuple | None = None):
         self._all_strings = strings
         self._extracted_params = params
         self._model.set_strings(strings)
         self._filter_strings()
         count = len(strings)
-        capped = " (limit reached — raise Min length to narrow it down)" if count >= MAX_STRINGS else ""
-        self._banner.show_message(f"Found {count:,} strings{capped}.", "success" if not capped else "warning")
+        capped = (
+            " (limit reached — raise Min length to narrow it down)"
+            if count >= MAX_STRINGS
+            else ""
+        )
+        self._banner.show_message(
+            f"Found {count:,} strings{capped}.", "success" if not capped else "warning"
+        )
 
     def _update_strings(self):
         """Encoding / min-length changed: offer to re-run (results no longer match)."""
@@ -329,7 +371,9 @@ class StringsTab(QWidget):
         current = (self._min_length_spin.value(), self._encoding_combo.currentText())
         if current != self._extracted_params:
             self._extract_btn.setText("Re-extract Strings")
-            self._count_lbl.setText("Settings changed — click “Re-extract Strings” to refresh the list.")
+            self._count_lbl.setText(
+                "Settings changed — click “Re-extract Strings” to refresh the list."
+            )
         else:
             self._extract_btn.setText("Extract Strings")
             self._update_count()
@@ -352,8 +396,14 @@ class StringsTab(QWidget):
                 match = pattern.search
             except re.error:
                 needle = search_text if case_sensitive else search_text.lower()
-                match = (lambda s: needle in s) if case_sensitive else (lambda s: needle in s.lower())
-            self._model.set_filter([i for i, (_, s) in enumerate(self._all_strings) if match(s)])
+                match = (
+                    (lambda s: needle in s)
+                    if case_sensitive
+                    else (lambda s: needle in s.lower())
+                )
+            self._model.set_filter(
+                [i for i, (_, s) in enumerate(self._all_strings) if match(s)]
+            )
         self._details_text.clear()
         self._update_count()
         if self._extracted_params is not None:
@@ -363,7 +413,11 @@ class StringsTab(QWidget):
         total = self._model.total()
         shown = self._model.rowCount()
         if not total:
-            self._count_lbl.setText("No strings found." if self._extracted_params else self._count_lbl.text())
+            self._count_lbl.setText(
+                "No strings found."
+                if self._extracted_params
+                else self._count_lbl.text()
+            )
         elif shown == total:
             self._count_lbl.setText(f"{total:,} strings")
         else:
@@ -377,7 +431,9 @@ class StringsTab(QWidget):
 
         offset, string = self._model.entry(index.row())
         encoding = self._extracted_params[1] if self._extracted_params else "ascii"
-        codec = {"utf-16": "utf-16-le", "utf-8": "utf-8", "latin-1": "latin-1"}.get(encoding, "ascii")
+        codec = {"utf-16": "utf-16-le", "utf-8": "utf-8", "latin-1": "latin-1"}.get(
+            encoding, "ascii"
+        )
         raw = string.encode(codec, errors="replace")
         hex_dump = raw[:512].hex(" ")
         more = f"\n… ({len(raw) - 512:,} more bytes)" if len(raw) > 512 else ""
@@ -396,25 +452,35 @@ Hex dump of string:
         self._details_text.setPlainText(details)
 
     def _copy_selected(self):
-        rows = sorted(i.row() for i in self._strings_list.selectionModel().selectedIndexes())
+        rows = sorted(
+            i.row() for i in self._strings_list.selectionModel().selectedIndexes()
+        )
         if not rows:
             return
-        QApplication.clipboard().setText("\n".join(self._model.entry(r)[1] for r in rows))
+        QApplication.clipboard().setText(
+            "\n".join(self._model.entry(r)[1] for r in rows)
+        )
         self._banner.show_message(f"Copied {len(rows)} string(s).", "info", 2000)
 
     def _export(self):
         if not self._model.rowCount() or not self._info:
-            self._banner.show_message("Nothing to export — extract strings first.", "warning")
+            self._banner.show_message(
+                "Nothing to export — extract strings first.", "warning"
+            )
             return
         default = f"{self._info.name}.strings.txt"
-        path, _ = QFileDialog.getSaveFileName(self, "Export Strings", default, "Text Files (*.txt)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Strings", default, "Text Files (*.txt)"
+        )
         if not path:
             return
         try:
             with open(path, "w", encoding="utf-8") as f:
                 for offset, string in self._model.visible_entries():
                     f.write(f"{offset:08X}\t{string}\n")
-            self._banner.show_message(f"Exported {self._model.rowCount():,} strings.", "success")
+            self._banner.show_message(
+                f"Exported {self._model.rowCount():,} strings.", "success"
+            )
         except OSError as e:
             self._banner.show_message(str(e), "error")
 

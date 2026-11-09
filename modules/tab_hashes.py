@@ -7,9 +7,16 @@ import time
 import threading
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QCheckBox,
-    QScrollArea, QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QLineEdit,
+    QCheckBox,
+    QScrollArea,
+    QApplication,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 
@@ -17,20 +24,27 @@ from modules.file_info import FileInfo, compute_hashes, HashCancelled, human_siz
 from modules.metadata_cache import get_cached_hashes, store_hashes
 from modules.settings_dialog import AppSettings
 from modules.widgets import SectionLabel, StatusBanner, HashProgressBar, Card
-from modules.theme import BG_CARD, BORDER, ACCENT, SUCCESS, ERROR, TEXT_SECONDARY, TEXT_MUTED, WARNING
+from modules.theme import SUCCESS, ERROR, TEXT_SECONDARY
 
 ALGORITHMS = ("md5", "sha1", "sha256", "sha512", "blake2")
-_LABELS = {"md5": "MD5", "sha1": "SHA-1", "sha256": "SHA-256", "sha512": "SHA-512", "blake2": "BLAKE2b"}
+_LABELS = {
+    "md5": "MD5",
+    "sha1": "SHA-1",
+    "sha256": "SHA-256",
+    "sha512": "SHA-512",
+    "blake2": "BLAKE2b",
+}
 # Hex digest length → candidate algorithms (SHA-512 and BLAKE2b are both 128 chars)
 _BY_LENGTH = {32: ["md5"], 40: ["sha1"], 64: ["sha256"], 128: ["sha512", "blake2"]}
 
 
 # ── Worker thread ─────────────────────────────────────────────────────────
 
+
 class HashWorker(QObject):
-    progress = pyqtSignal(int, int)       # done, total
-    finished = pyqtSignal(dict)           # {algo: hexdigest}
-    error    = pyqtSignal(str)
+    progress = pyqtSignal(int, int)  # done, total
+    finished = pyqtSignal(dict)  # {algo: hexdigest}
+    error = pyqtSignal(str)
     cancelled = pyqtSignal()
 
     def __init__(self, path: str, algorithms: list[str]):
@@ -45,7 +59,8 @@ class HashWorker(QObject):
     def run(self):
         try:
             result = compute_hashes(
-                self._path, self._algorithms,
+                self._path,
+                self._algorithms,
                 progress_cb=lambda d, t: self.progress.emit(d, t),
                 cancel_cb=self._stop.is_set,
             )
@@ -57,6 +72,7 @@ class HashWorker(QObject):
 
 
 # ── Tab ───────────────────────────────────────────────────────────────────
+
 
 class HashesTab(QWidget):
     def __init__(self, parent=None):
@@ -91,13 +107,18 @@ class HashesTab(QWidget):
         al = QHBoxLayout(algo_card)
         al.setContentsMargins(16, 12, 16, 12)
         al.setSpacing(24)
-        self._chk_md5    = QCheckBox("MD5")
-        self._chk_sha1   = QCheckBox("SHA-1")
+        self._chk_md5 = QCheckBox("MD5")
+        self._chk_sha1 = QCheckBox("SHA-1")
         self._chk_sha256 = QCheckBox("SHA-256")
         self._chk_sha512 = QCheckBox("SHA-512")
         self._chk_blake2 = QCheckBox("BLAKE2")
-        self._checks = {"md5": self._chk_md5, "sha1": self._chk_sha1, "sha256": self._chk_sha256,
-                        "sha512": self._chk_sha512, "blake2": self._chk_blake2}
+        self._checks = {
+            "md5": self._chk_md5,
+            "sha1": self._chk_sha1,
+            "sha256": self._chk_sha256,
+            "sha512": self._chk_sha512,
+            "blake2": self._chk_blake2,
+        }
         for chk in self._checks.values():
             al.addWidget(chk)
         al.addStretch()
@@ -125,7 +146,9 @@ class HashesTab(QWidget):
         results_header.addStretch()
         self._copy_all_btn = QPushButton("Copy All")
         self._copy_all_btn.setObjectName("ghost")
-        self._copy_all_btn.setToolTip("Copy every computed hash, one per line (sha256sum-style)")
+        self._copy_all_btn.setToolTip(
+            "Copy every computed hash, one per line (sha256sum-style)"
+        )
         self._copy_all_btn.clicked.connect(self._copy_all)
         results_header.addWidget(self._copy_all_btn)
         layout.addLayout(results_header)
@@ -136,13 +159,15 @@ class HashesTab(QWidget):
         rl.setSpacing(10)
 
         self._hash_fields: dict[str, QLineEdit] = {}
-        self._copy_btns:  dict[str, QPushButton] = {}
+        self._copy_btns: dict[str, QPushButton] = {}
 
         for algo in ALGORITHMS:
             row = QHBoxLayout()
             lbl = QLabel(_LABELS[algo])
             lbl.setFixedWidth(76)
-            lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; letter-spacing: 1px;")
+            lbl.setStyleSheet(
+                f"color: {TEXT_SECONDARY}; font-size: 11px; letter-spacing: 1px;"
+            )
             field = QLineEdit()
             field.setReadOnly(True)
             field.setPlaceholderText("—")
@@ -166,14 +191,18 @@ class HashesTab(QWidget):
         vl.setContentsMargins(16, 12, 16, 12)
         vl.setSpacing(10)
 
-        hint = QLabel("Paste an expected hash — the algorithm is detected from its length "
-                      "and computed automatically if needed.")
+        hint = QLabel(
+            "Paste an expected hash — the algorithm is detected from its length "
+            "and computed automatically if needed."
+        )
         hint.setWordWrap(True)
         hint.setStyleSheet(f"color: {TEXT_SECONDARY};")
         vl.addWidget(hint)
         verify_row = QHBoxLayout()
         self._verify_edit = QLineEdit()
-        self._verify_edit.setPlaceholderText("Paste MD5, SHA-1, SHA-256, SHA-512 or BLAKE2 hash here…")
+        self._verify_edit.setPlaceholderText(
+            "Paste MD5, SHA-1, SHA-256, SHA-512 or BLAKE2 hash here…"
+        )
         self._verify_edit.setClearButtonEnabled(True)
         self._verify_edit.returnPressed.connect(self._verify)
         self._paste_btn = QPushButton("Paste")
@@ -211,7 +240,9 @@ class HashesTab(QWidget):
         cached = get_cached_hashes(info.path)
         if cached:
             self._show_results(cached)
-            self._banner.show_message("Showing cached hashes for this file.", "info", 2500)
+            self._banner.show_message(
+                "Showing cached hashes for this file.", "info", 2500
+            )
 
         if AppSettings().auto_hash_on_load():
             missing = [a for a in self._selected_algorithms() if a not in self._hashes]
@@ -245,9 +276,10 @@ class HashesTab(QWidget):
         return [a for a, chk in self._checks.items() if chk.isChecked()]
 
     def _compute(self, algos: list[str] | None = None):
-        if not self._info: return
+        if not self._info:
+            return
         if self._thread is not None:
-            return   # already running
+            return  # already running
         if not algos:
             algos = self._selected_algorithms()
         if not algos:
@@ -268,7 +300,9 @@ class HashesTab(QWidget):
         worker.progress.connect(self._on_progress)
         worker.finished.connect(self._on_hashes_done)
         worker.finished.connect(thread.quit)
-        worker.cancelled.connect(lambda: self._banner.show_message("Hashing cancelled.", "warning"))
+        worker.cancelled.connect(
+            lambda: self._banner.show_message("Hashing cancelled.", "warning")
+        )
         worker.cancelled.connect(thread.quit)
         worker.error.connect(lambda e: self._banner.show_message(e, "error"))
         worker.error.connect(thread.quit)
@@ -319,13 +353,19 @@ class HashesTab(QWidget):
         text = self._hash_fields[algo].text()
         if text:
             QApplication.clipboard().setText(text)
-            self._banner.show_message(f"{_LABELS[algo]} copied to clipboard.", "info", 2000)
+            self._banner.show_message(
+                f"{_LABELS[algo]} copied to clipboard.", "info", 2000
+            )
 
     def _copy_all(self):
         if not self._hashes or not self._info:
             self._banner.show_message("Compute hashes first.", "warning")
             return
-        lines = [f"{_LABELS[a]:<8} {self._hashes[a]}  {self._info.name}" for a in ALGORITHMS if a in self._hashes]
+        lines = [
+            f"{_LABELS[a]:<8} {self._hashes[a]}  {self._info.name}"
+            for a in ALGORITHMS
+            if a in self._hashes
+        ]
         QApplication.clipboard().setText("\n".join(lines))
         self._banner.show_message(f"Copied {len(lines)} hash(es).", "info", 2000)
 
@@ -345,13 +385,17 @@ class HashesTab(QWidget):
         hexchars = set("0123456789abcdefABCDEF")
         digests = [t for t in tokens if len(t) in _BY_LENGTH and set(t) <= hexchars]
         if not digests:
-            self._show_verify("✗  No MD5 / SHA / BLAKE2 hex digest found in that text.", ERROR)
+            self._show_verify(
+                "✗  No MD5 / SHA / BLAKE2 hex digest found in that text.", ERROR
+            )
             return
         expected = digests[0].lower()
 
         candidates = _BY_LENGTH.get(len(expected))
         if not candidates:
-            self._show_verify(f"✗  Unrecognised hash length ({len(expected)} hex chars).", ERROR)
+            self._show_verify(
+                f"✗  Unrecognised hash length ({len(expected)} hex chars).", ERROR
+            )
             return
 
         known = [a for a in candidates if a in self._hashes]
@@ -364,7 +408,10 @@ class HashesTab(QWidget):
         if missing:
             # Compute just what we need, then re-run verification
             self._pending_verify = True
-            self._show_verify(f"…  Computing {' / '.join(_LABELS[a] for a in missing)} to verify…", TEXT_SECONDARY)
+            self._show_verify(
+                f"…  Computing {' / '.join(_LABELS[a] for a in missing)} to verify…",
+                TEXT_SECONDARY,
+            )
             self._compute(missing)
             return
 

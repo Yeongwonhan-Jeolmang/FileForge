@@ -7,21 +7,32 @@ import os
 import html
 import difflib
 import filecmp
+from typing import Any
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTextEdit, QFileDialog, QSplitter,
-    QGroupBox, QFormLayout, QListWidget, QListWidgetItem,
-    QTabWidget, QWidget, QProgressBar, QCheckBox,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QFileDialog,
+    QGroupBox,
+    QListWidget,
+    QListWidgetItem,
+    QTabWidget,
+    QWidget,
+    QProgressBar,
+    QCheckBox,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED, SUCCESS, ERROR, INFO, WARNING
-from modules.file_info import read_file_info, compute_hashes
+from modules.theme import TEXT_SECONDARY, TEXT_MUTED, SUCCESS, ERROR, INFO, WARNING
+from modules.file_info import read_file_info
 from modules.entropy_calculator import calculate_entropy
 
 
 # ── Worker thread ─────────────────────────────────────────────────────────
+
 
 class ComparisonWorker(QObject):
     progress = pyqtSignal(int)
@@ -38,7 +49,11 @@ class ComparisonWorker(QObject):
         try:
             self.progress.emit(10)
 
-            if self._compare_dirs and os.path.isdir(self._path1) and os.path.isdir(self._path2):
+            if (
+                self._compare_dirs
+                and os.path.isdir(self._path1)
+                and os.path.isdir(self._path2)
+            ):
                 results = self._compare_directories(self._path1, self._path2)
                 self.progress.emit(100)
                 self.finished.emit(results)
@@ -50,28 +65,34 @@ class ComparisonWorker(QObject):
             self.progress.emit(30)
 
             # Compare basic properties
-            results = {
-                'info1': info1,
-                'info2': info2,
-                'differences': self._compare_infos(info1, info2)
+            results: dict[str, Any] = {
+                "info1": info1,
+                "info2": info2,
+                "differences": self._compare_infos(info1, info2),
             }
             self.progress.emit(60)
 
             # Byte-for-byte identity (stops at the first differing chunk)
             try:
-                results['identical'] = info1.size == info2.size and filecmp.cmp(self._path1, self._path2, shallow=False)
+                results["identical"] = info1.size == info2.size and filecmp.cmp(
+                    self._path1, self._path2, shallow=False
+                )
             except OSError:
-                results['identical'] = False
+                results["identical"] = False
 
             # Entropy is sampled so this stays fast for huge files (was computed on the UI thread)
-            results['entropy1'] = calculate_entropy(self._path1, sample_size=1_000_000)
-            results['entropy2'] = calculate_entropy(self._path2, sample_size=1_000_000)
+            results["entropy1"] = calculate_entropy(self._path1, sample_size=1_000_000)
+            results["entropy2"] = calculate_entropy(self._path2, sample_size=1_000_000)
             self.progress.emit(75)
 
             # Compare content if both are text or small files
-            if not results['identical'] and info1.size < 4 * 1024 * 1024 and info2.size < 4 * 1024 * 1024:
+            if (
+                not results["identical"]
+                and info1.size < 4 * 1024 * 1024
+                and info2.size < 4 * 1024 * 1024
+            ):
                 try:
-                    with open(self._path1, 'rb') as f1, open(self._path2, 'rb') as f2:
+                    with open(self._path1, "rb") as f1, open(self._path2, "rb") as f2:
                         content1 = f1.read()
                         content2 = f2.read()
 
@@ -79,15 +100,17 @@ class ComparisonWorker(QObject):
                     try:
                         if b"\x00" in content1[:8192] or b"\x00" in content2[:8192]:
                             raise UnicodeDecodeError("utf-8", b"", 0, 1, "binary")
-                        text1 = content1.decode('utf-8')
-                        text2 = content2.decode('utf-8')
-                        diff = list(difflib.unified_diff(
-                            text1.splitlines(keepends=True),
-                            text2.splitlines(keepends=True),
-                            fromfile=os.path.basename(self._path1),
-                            tofile=os.path.basename(self._path2)
-                        ))
-                        results['text_diff'] = diff[:20000]
+                        text1 = content1.decode("utf-8")
+                        text2 = content2.decode("utf-8")
+                        diff = list(
+                            difflib.unified_diff(
+                                text1.splitlines(keepends=True),
+                                text2.splitlines(keepends=True),
+                                fromfile=os.path.basename(self._path1),
+                                tofile=os.path.basename(self._path2),
+                            )
+                        )
+                        results["text_diff"] = diff[:20000]
                     except UnicodeDecodeError:
                         pass
 
@@ -96,14 +119,18 @@ class ComparisonWorker(QObject):
                     common = min(len(content1), len(content2))
                     for i in range(common):
                         if content1[i] != content2[i]:
-                            hex_diff.append(f"{i:08X}: {content1[i]:02X} != {content2[i]:02X}")
-                            if len(hex_diff) >= 1000:   # Limit to first 1000 differences
+                            hex_diff.append(
+                                f"{i:08X}: {content1[i]:02X} != {content2[i]:02X}"
+                            )
+                            if len(hex_diff) >= 1000:  # Limit to first 1000 differences
                                 hex_diff.append("… (more differences not shown)")
                                 break
                     if len(content1) != len(content2):
                         longer = "File 1" if len(content1) > len(content2) else "File 2"
-                        hex_diff.append(f"{common:08X}: {longer} has {abs(len(content1) - len(content2)):,} extra byte(s) from here")
-                    results['hex_diff'] = hex_diff
+                        hex_diff.append(
+                            f"{common:08X}: {longer} has {abs(len(content1) - len(content2)):,} extra byte(s) from here"
+                        )
+                    results["hex_diff"] = hex_diff
 
                 except (OSError, IOError):
                     pass
@@ -115,12 +142,12 @@ class ComparisonWorker(QObject):
             self.error.emit(str(e))
 
     def _compare_directories(self, dir1: str, dir2: str) -> dict:
-        summary = {
-            'mode': 'directory',
-            'root1': dir1,
-            'root2': dir2,
-            'differences': [],
-            'files': [],
+        summary: dict[str, Any] = {
+            "mode": "directory",
+            "root1": dir1,
+            "root2": dir2,
+            "differences": [],
+            "files": [],
         }
         map1 = {}
         map2 = {}
@@ -140,24 +167,26 @@ class ComparisonWorker(QObject):
             if idx % 50 == 0 and all_keys:
                 self.progress.emit(10 + int(85 * idx / len(all_keys)))
             if rel not in map1:
-                summary['differences'].append(f"Only in second folder: {rel}")
+                summary["differences"].append(f"Only in second folder: {rel}")
             elif rel not in map2:
-                summary['differences'].append(f"Only in first folder: {rel}")
+                summary["differences"].append(f"Only in first folder: {rel}")
             else:
                 try:
                     size1 = os.path.getsize(map1[rel])
                     size2 = os.path.getsize(map2[rel])
                     if size1 != size2:
-                        summary['differences'].append(f"Size differs: {rel} ({size1:,} vs {size2:,} bytes)")
+                        summary["differences"].append(
+                            f"Size differs: {rel} ({size1:,} vs {size2:,} bytes)"
+                        )
                     # filecmp stops at the first differing block — much cheaper than two full hashes
                     elif not filecmp.cmp(map1[rel], map2[rel], shallow=False):
-                        summary['differences'].append(f"Content differs: {rel}")
+                        summary["differences"].append(f"Content differs: {rel}")
                     else:
                         identical += 1
                 except OSError as e:
-                    summary['differences'].append(f"Unreadable: {rel} ({e})")
-        summary['identical_count'] = identical
-        summary['total_count'] = len(all_keys)
+                    summary["differences"].append(f"Unreadable: {rel} ({e})")
+        summary["identical_count"] = identical
+        summary["total_count"] = len(all_keys)
         return summary
 
     def _compare_infos(self, info1, info2) -> list:
@@ -176,15 +205,19 @@ class ComparisonWorker(QObject):
 
         # Permissions
         if info1.permissions.octal != info2.permissions.octal:
-            differences.append(f"Permissions: {info1.permissions.octal} vs {info2.permissions.octal}")
+            differences.append(
+                f"Permissions: {info1.permissions.octal} vs {info2.permissions.octal}"
+            )
 
         # Timestamps (allow small differences)
         time_diff_threshold = 2  # seconds
         if abs(info1.modified - info2.modified) > time_diff_threshold:
-            differences.append(f"Modified: {info1.modified_str} vs {info2.modified_str}")
+            differences.append(
+                f"Modified: {info1.modified_str} vs {info2.modified_str}"
+            )
 
         # Hashes (if computed)
-        for algo in ['md5', 'sha1', 'sha256']:
+        for algo in ["md5", "sha1", "sha256"]:
             h1 = getattr(info1, algo, None)
             h2 = getattr(info2, algo, None)
             if h1 and h2 and h1 != h2:
@@ -194,6 +227,7 @@ class ComparisonWorker(QObject):
 
 
 # ── Dialog ─────────────────────────────────────────────────────────────────
+
 
 class ComparisonDialog(QDialog):
     def __init__(self, parent=None):
@@ -292,6 +326,7 @@ class ComparisonDialog(QDialog):
 
         # Buttons
         from PyQt5.QtWidgets import QDialogButtonBox
+
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         layout.addWidget(buttons)
         buttons.rejected.connect(self.reject)
@@ -341,7 +376,9 @@ class ComparisonDialog(QDialog):
             path, _ = QFileDialog.getOpenFileName(self, "Select First File")
         if path:
             self._file1_path = path
-            self._file1_label.setText(os.path.basename(path) if os.path.isfile(path) else path)
+            self._file1_label.setText(
+                os.path.basename(path) if os.path.isfile(path) else path
+            )
             self._file1_label.setToolTip(path)
             self._update_compare_button()
 
@@ -352,7 +389,9 @@ class ComparisonDialog(QDialog):
             path, _ = QFileDialog.getOpenFileName(self, "Select Second File")
         if path:
             self._file2_path = path
-            self._file2_label.setText(os.path.basename(path) if os.path.isfile(path) else path)
+            self._file2_label.setText(
+                os.path.basename(path) if os.path.isfile(path) else path
+            )
             self._file2_label.setToolTip(path)
             self._update_compare_button()
 
@@ -382,7 +421,9 @@ class ComparisonDialog(QDialog):
 
     def _update_compare_button(self):
         # Paths are reset to None when switching file/directory mode, so check values, not attributes
-        enabled = bool(self._file1_path) and bool(self._file2_path) and self._thread is None
+        enabled = (
+            bool(self._file1_path) and bool(self._file2_path) and self._thread is None
+        )
         self._compare_btn.setEnabled(enabled)
 
     def _compare_files(self):
@@ -394,7 +435,11 @@ class ComparisonDialog(QDialog):
         self._progress.setVisible(True)
         self._progress.setValue(0)
 
-        worker = ComparisonWorker(self._file1_path, self._file2_path, compare_dirs=self._directory_mode_chk.isChecked())
+        worker = ComparisonWorker(
+            self._file1_path,
+            self._file2_path,
+            compare_dirs=self._directory_mode_chk.isChecked(),
+        )
         thread = QThread(self)
         worker.moveToThread(thread)
 
@@ -419,12 +464,12 @@ class ComparisonDialog(QDialog):
         self._worker = None
         self._update_compare_button()
 
-    def done(self, result):
+    def done(self, a0):
         # Don't destroy the dialog while a comparison thread is still running
         if self._thread is not None:
             self._thread.quit()
             self._thread.wait(5000)
-        super().done(result)
+        super().done(a0)
 
     def _on_comparison_done(self, results: dict):
         self._results = results
@@ -436,7 +481,9 @@ class ComparisonDialog(QDialog):
 
     def _set_verdict(self, text: str, color: str):
         self._verdict.setText(text)
-        self._verdict.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {color};")
+        self._verdict.setStyleSheet(
+            f"font-size: 14px; font-weight: bold; color: {color};"
+        )
 
     def _render_diff(self, lines: list[str]):
         """Unified diff with +/- lines coloured, rendered as lightweight HTML."""
@@ -453,46 +500,57 @@ class ComparisonDialog(QDialog):
                 out.append(f'<span style="color:{ERROR}">{esc}</span>')
             else:
                 out.append(esc)
-        self._text_diff_edit.setHtml('<pre style="margin:0">' + "\n".join(out) + "</pre>")
+        self._text_diff_edit.setHtml(
+            '<pre style="margin:0">' + "\n".join(out) + "</pre>"
+        )
 
     def _display_results(self, results: dict):
-        if results.get('mode') == 'directory':
-            differences = results.get('differences', [])
+        if results.get("mode") == "directory":
+            differences = results.get("differences", [])
             summary = f"""Directory Comparison Summary
-{'='*40}
+{"=" * 40}
 
-Folder 1: {results.get('root1')}
-Folder 2: {results.get('root2')}
+Folder 1: {results.get("root1")}
+Folder 2: {results.get("root2")}
 
 Differences Found: {len(differences)}
 """
             if differences:
-                summary += '\nDifferences:\n'
+                summary += "\nDifferences:\n"
                 for diff in differences:
-                    summary += f'• {diff}\n'
+                    summary += f"• {diff}\n"
             else:
-                summary += '\nNo differences were detected.'
+                summary += "\nNo differences were detected."
             self._summary_text.setPlainText(summary)
             self._diff_list.clear()
             for diff in differences:
                 self._diff_list.addItem(QListWidgetItem(diff))
-            self._text_diff_edit.setPlainText('Directory comparison does not support text diff.')
-            self._hex_diff_edit.setPlainText('Directory comparison does not support hex diff.')
+            self._text_diff_edit.setPlainText(
+                "Directory comparison does not support text diff."
+            )
+            self._hex_diff_edit.setPlainText(
+                "Directory comparison does not support hex diff."
+            )
             if differences:
-                self._set_verdict(f"≠  {len(differences):,} difference(s) · "
-                                  f"{results.get('identical_count', 0):,} of {results.get('total_count', 0):,} files identical",
-                                  WARNING)
+                self._set_verdict(
+                    f"≠  {len(differences):,} difference(s) · "
+                    f"{results.get('identical_count', 0):,} of {results.get('total_count', 0):,} files identical",
+                    WARNING,
+                )
             else:
-                self._set_verdict(f"✓  Folders are identical ({results.get('total_count', 0):,} files)", SUCCESS)
+                self._set_verdict(
+                    f"✓  Folders are identical ({results.get('total_count', 0):,} files)",
+                    SUCCESS,
+                )
             return
 
-        info1 = results['info1']
-        info2 = results['info2']
-        differences = results.get('differences', [])
+        info1 = results["info1"]
+        info2 = results["info2"]
+        differences = results.get("differences", [])
 
         # Summary
         summary = f"""File Comparison Summary
-{'='*40}
+{"=" * 40}
 
 File 1: {info1.path}
 File 2: {info2.path}
@@ -504,10 +562,10 @@ Basic Properties:
 - File 2 type: {info2.mime_type}
 
 Entropy (sampled):
-- File 1: {results.get('entropy1', 0.0):.2f} bits/byte
-- File 2: {results.get('entropy2', 0.0):.2f} bits/byte
+- File 1: {results.get("entropy1", 0.0):.2f} bits/byte
+- File 2: {results.get("entropy2", 0.0):.2f} bits/byte
 
-Content: {'IDENTICAL (byte-for-byte)' if results.get('identical') else 'different'}
+Content: {"IDENTICAL (byte-for-byte)" if results.get("identical") else "different"}
 
 Differences Found: {len(differences)}
 """
@@ -525,22 +583,29 @@ Differences Found: {len(differences)}
             item = QListWidgetItem(diff)
             self._diff_list.addItem(item)
 
-        if results.get('identical'):
+        if results.get("identical"):
             self._set_verdict("✓  Files are byte-for-byte identical", SUCCESS)
         else:
-            self._set_verdict(f"≠  Files differ  ·  {len(differences)} property difference(s)", WARNING)
+            self._set_verdict(
+                f"≠  Files differ  ·  {len(differences)} property difference(s)",
+                WARNING,
+            )
 
         # Content comparison
-        if results.get('identical'):
+        if results.get("identical"):
             self._text_diff_edit.setPlainText("Files are identical.")
-        elif 'text_diff' in results:
-            self._render_diff(results['text_diff'])
+        elif "text_diff" in results:
+            self._render_diff(results["text_diff"])
             self._content_tabs.setCurrentIndex(0)
         else:
-            self._text_diff_edit.setPlainText("No text diff available (files are binary or larger than 4 MB)")
+            self._text_diff_edit.setPlainText(
+                "No text diff available (files are binary or larger than 4 MB)"
+            )
             self._content_tabs.setCurrentIndex(1)
 
-        if 'hex_diff' in results and results['hex_diff']:
-            self._hex_diff_edit.setPlainText('\n'.join(results['hex_diff']))
+        if "hex_diff" in results and results["hex_diff"]:
+            self._hex_diff_edit.setPlainText("\n".join(results["hex_diff"]))
         else:
-            self._hex_diff_edit.setPlainText("No hex differences found or files are identical")
+            self._hex_diff_edit.setPlainText(
+                "No hex differences found or files are identical"
+            )

@@ -7,15 +7,26 @@ import time
 from datetime import datetime
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QDateTimeEdit, QScrollArea,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QDateTimeEdit,
+    QScrollArea,
 )
 from PyQt5.QtCore import Qt, QDateTime, pyqtSignal
 
 from modules.file_info import FileInfo
-from modules.file_ops import set_timestamps, touch_file, set_created_time, can_set_created_time
+from modules.file_ops import (
+    set_timestamps,
+    touch_file,
+    set_created_time,
+    can_set_created_time,
+)
 from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import BG_CARD, BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
+from modules.theme import TEXT_SECONDARY, TEXT_MUTED
 
 
 class TimestampsTab(QWidget):
@@ -82,7 +93,9 @@ class TimestampsTab(QWidget):
         row = QHBoxLayout()
         row.addWidget(self._mod_dt, 1)
         now_mod = QPushButton("Set to Now")
-        now_mod.clicked.connect(lambda: self._mod_dt.setDateTime(QDateTime.currentDateTime()))
+        now_mod.clicked.connect(
+            lambda: self._mod_dt.setDateTime(QDateTime.currentDateTime())
+        )
         row.addWidget(now_mod)
         ml.addLayout(row)
         apply_mod = QPushButton("Apply Modified Time")
@@ -102,7 +115,9 @@ class TimestampsTab(QWidget):
         row2 = QHBoxLayout()
         row2.addWidget(self._acc_dt, 1)
         now_acc = QPushButton("Set to Now")
-        now_acc.clicked.connect(lambda: self._acc_dt.setDateTime(QDateTime.currentDateTime()))
+        now_acc.clicked.connect(
+            lambda: self._acc_dt.setDateTime(QDateTime.currentDateTime())
+        )
         row2.addWidget(now_acc)
         al.addLayout(row2)
         apply_acc = QPushButton("Apply Accessed Time")
@@ -122,7 +137,9 @@ class TimestampsTab(QWidget):
         row3 = QHBoxLayout()
         row3.addWidget(self._cre_dt, 1)
         copy_mod = QPushButton("Same as Modified")
-        copy_mod.clicked.connect(lambda: self._cre_dt.setDateTime(self._mod_dt.dateTime()))
+        copy_mod.clicked.connect(
+            lambda: self._cre_dt.setDateTime(self._mod_dt.dateTime())
+        )
         row3.addWidget(copy_mod)
         cl.addLayout(row3)
         apply_cre = QPushButton("Apply Created Time")
@@ -130,8 +147,10 @@ class TimestampsTab(QWidget):
         apply_cre.clicked.connect(self._apply_created)
         cl.addWidget(apply_cre)
         if not can_set_created_time():
-            note = QLabel("Creation (birth) time can only be changed on Windows — "
-                          "Linux and macOS don't expose an API to set it.")
+            note = QLabel(
+                "Creation (birth) time can only be changed on Windows — "
+                "Linux and macOS don't expose an API to set it."
+            )
             note.setWordWrap(True)
             note.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
             cl.addWidget(note)
@@ -157,9 +176,14 @@ class TimestampsTab(QWidget):
 
         # Store editable widgets for enable/disable
         self._editable = [
-            self._mod_dt, self._acc_dt,
-            apply_mod, apply_acc, apply_both, touch_btn,
-            now_mod, now_acc,
+            self._mod_dt,
+            self._acc_dt,
+            apply_mod,
+            apply_acc,
+            apply_both,
+            touch_btn,
+            now_mod,
+            now_acc,
         ]
         self._created_widgets = [self._cre_dt, apply_cre, copy_mod]
         self._set_enabled(False)
@@ -192,27 +216,32 @@ class TimestampsTab(QWidget):
     # ── Slots ─────────────────────────────────────────────────────────
 
     def _apply_modified(self):
-        if not self._info: return
+        if not self._info:
+            return
         ts = self._qdt_to_ts(self._mod_dt.dateTime())
         ok, msg = set_timestamps(self._info.path, modified=ts)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
             self._cur_labels["Modified"].setText(
-                self._mod_dt.dateTime().toString("yyyy-MM-dd  HH:mm:ss"))
+                self._mod_dt.dateTime().toString("yyyy-MM-dd  HH:mm:ss")
+            )
             self.file_changed.emit(self._info.path)
 
     def _apply_accessed(self):
-        if not self._info: return
+        if not self._info:
+            return
         ts = self._qdt_to_ts(self._acc_dt.dateTime())
         ok, msg = set_timestamps(self._info.path, accessed=ts)
         self._banner.show_message(msg, "success" if ok else "error")
         if ok:
             self._cur_labels["Accessed"].setText(
-                self._acc_dt.dateTime().toString("yyyy-MM-dd  HH:mm:ss"))
+                self._acc_dt.dateTime().toString("yyyy-MM-dd  HH:mm:ss")
+            )
             self.file_changed.emit(self._info.path)
 
     def _apply_created(self):
-        if not self._info: return
+        if not self._info:
+            return
         ts = self._qdt_to_ts(self._cre_dt.dateTime())
         ok, msg = set_created_time(self._info.path, ts)
         self._banner.show_message(msg, "success" if ok else "error")
@@ -220,7 +249,8 @@ class TimestampsTab(QWidget):
             self.file_changed.emit(self._info.path)
 
     def _apply_both(self):
-        if not self._info: return
+        if not self._info:
+            return
         mts = self._qdt_to_ts(self._mod_dt.dateTime())
         ats = self._qdt_to_ts(self._acc_dt.dateTime())
         ok, msg = set_timestamps(self._info.path, modified=mts, accessed=ats)
@@ -229,7 +259,8 @@ class TimestampsTab(QWidget):
             self.file_changed.emit(self._info.path)
 
     def _touch(self):
-        if not self._info: return
+        if not self._info:
+            return
         ok, msg = touch_file(self._info.path)
         if ok:
             now = QDateTime.currentDateTime()
@@ -269,8 +300,13 @@ def _relative(ts: float) -> str:
     delta = time.time() - ts
     future = delta < 0
     delta = abs(delta)
-    for unit, secs in (("year", 31_536_000), ("month", 2_592_000), ("day", 86_400),
-                       ("hour", 3_600), ("minute", 60)):
+    for unit, secs in (
+        ("year", 31_536_000),
+        ("month", 2_592_000),
+        ("day", 86_400),
+        ("hour", 3_600),
+        ("minute", 60),
+    ):
         if delta >= secs:
             n = int(delta // secs)
             text = f"{n} {unit}{'s' if n != 1 else ''}"

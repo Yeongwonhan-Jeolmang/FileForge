@@ -5,36 +5,43 @@ tab_audio.py — Edit audio metadata tags (via mutagen).
 from __future__ import annotations
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QLineEdit, QScrollArea,
-    QFormLayout, QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QLineEdit,
+    QScrollArea,
+    QFormLayout,
+    QMessageBox,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from modules.file_info import FileInfo
 from modules.file_ops import write_audio_tags, delete_audio_tags
 from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import BG_CARD, BORDER, TEXT_SECONDARY, TEXT_MUTED, ACCENT
+from modules.theme import TEXT_SECONDARY, TEXT_MUTED
 
 
 # Standard ID3 / Vorbis tags (easy interface names)
 COMMON_TAGS = [
-    ("title",        "Title"),
-    ("artist",       "Artist"),
-    ("albumartist",  "Album Artist"),
-    ("album",        "Album"),
-    ("date",         "Year"),
-    ("tracknumber",  "Track #"),
-    ("discnumber",   "Disc #"),
-    ("genre",        "Genre"),
-    ("composer",     "Composer"),
-    ("comment",      "Comment"),
-    ("copyright",    "Copyright"),
-    ("encodedby",    "Encoded By"),
-    ("language",     "Language"),
-    ("lyricist",     "Lyricist"),
+    ("title", "Title"),
+    ("artist", "Artist"),
+    ("albumartist", "Album Artist"),
+    ("album", "Album"),
+    ("date", "Year"),
+    ("tracknumber", "Track #"),
+    ("discnumber", "Disc #"),
+    ("genre", "Genre"),
+    ("composer", "Composer"),
+    ("comment", "Comment"),
+    ("copyright", "Copyright"),
+    ("encodedby", "Encoded By"),
+    ("language", "Language"),
+    ("lyricist", "Lyricist"),
     ("organization", "Label"),
-    ("website",      "Website"),
+    ("website", "Website"),
 ]
 
 
@@ -117,7 +124,7 @@ class AudioTab(QWidget):
 
     def load(self, info: FileInfo):
         self._info = info
-        is_audio = (info.kind == "audio")
+        is_audio = info.kind == "audio"
         self._not_audio_lbl.setVisible(not is_audio)
 
         # Populate from existing tags
@@ -141,8 +148,11 @@ class AudioTab(QWidget):
     # ── Slots ─────────────────────────────────────────────────────────
 
     def _save(self):
-        if not self._info: return
-        tags = {k: v.text().strip() for k, v in self._fields.items() if v.text().strip()}
+        if not self._info:
+            return
+        tags = {
+            k: v.text().strip() for k, v in self._fields.items() if v.text().strip()
+        }
         if not tags:
             self._banner.show_message("No tags to save.", "warning")
             return
@@ -156,11 +166,14 @@ class AudioTab(QWidget):
             f.clear()
 
     def _delete_all(self):
-        if not self._info: return
+        if not self._info:
+            return
         reply = QMessageBox.question(
-            self, "Confirm Delete",
+            self,
+            "Confirm Delete",
             "Delete ALL audio tags from this file? This cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
             return

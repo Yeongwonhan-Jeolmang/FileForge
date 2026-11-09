@@ -4,23 +4,43 @@ widgets.py — Reusable PyQt5 widget components for FileForge.
 
 from __future__ import annotations
 from PyQt5.QtWidgets import (
-    QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton,
-    QFrame, QSizePolicy, QProgressBar, QGraphicsOpacityEffect,
+    QWidget,
+    QLabel,
+    QHBoxLayout,
+    QVBoxLayout,
+    QPushButton,
+    QFrame,
+    QSizePolicy,
+    QProgressBar,
     QApplication,
 )
 from PyQt5.QtCore import (
-    Qt, QPropertyAnimation, QEasingCurve, pyqtProperty,
-    QTimer, pyqtSignal, QRectF, QSize,
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QRectF,
+    QSize,
 )
-from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
+from PyQt5.QtGui import QColor, QPainter, QPen
 from modules.theme import (
-    ACCENT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
-    BG_CARD, BG_MID, BORDER, SUCCESS, ERROR, WARNING, INFO,
-    ON_ACCENT, rgba, entropy_color,
+    ACCENT,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    TEXT_MUTED,
+    BG_MID,
+    BORDER,
+    SUCCESS,
+    ERROR,
+    WARNING,
+    INFO,
+    ON_ACCENT,
+    rgba,
+    entropy_color,
 )
 
 
 # ── Card container ─────────────────────────────────────────────────────────
+
 
 class Card(QFrame):
     """
@@ -43,6 +63,7 @@ def make_card() -> Card:
 
 # ── Horizontal separator ───────────────────────────────────────────────────
 
+
 class HSep(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -53,6 +74,7 @@ class HSep(QFrame):
 
 # ── Section header label ───────────────────────────────────────────────────
 
+
 class SectionLabel(QLabel):
     def __init__(self, text: str, parent=None):
         super().__init__(text.upper(), parent)
@@ -61,6 +83,7 @@ class SectionLabel(QLabel):
 
 
 # ── Key/Value row ──────────────────────────────────────────────────────────
+
 
 class KVRow(QWidget):
     """A label + value pair laid out horizontally."""
@@ -97,6 +120,7 @@ class KVRow(QWidget):
 
 # ── Tag chip ───────────────────────────────────────────────────────────────
 
+
 class TagChip(QLabel):
     def __init__(self, text: str, color: str = ACCENT, parent=None):
         super().__init__(text, parent)
@@ -108,6 +132,7 @@ class TagChip(QLabel):
 
 
 # ── Status banner (slides in/out) ──────────────────────────────────────────
+
 
 class StatusBanner(QWidget):
     """Animated status banner that auto-dismisses."""
@@ -146,7 +171,12 @@ class StatusBanner(QWidget):
         self.hide()
 
     def show_message(self, msg: str, level: str = "success", auto_hide_ms: int = 4000):
-        color_map = {"success": SUCCESS, "error": ERROR, "warning": WARNING, "info": INFO}
+        color_map = {
+            "success": SUCCESS,
+            "error": ERROR,
+            "warning": WARNING,
+            "info": INFO,
+        }
         color = color_map.get(level, ACCENT)
         self._icon.setText(self._ICONS.get(level, "●"))
         self._icon.setStyleSheet(
@@ -174,6 +204,7 @@ class StatusBanner(QWidget):
 
 
 # ── Animated progress overlay ─────────────────────────────────────────────
+
 
 class HashProgressBar(QWidget):
     def __init__(self, parent=None):
@@ -212,6 +243,7 @@ class HashProgressBar(QWidget):
 
 # ── Entropy profile graph ─────────────────────────────────────────────────
 
+
 class EntropyGraph(QWidget):
     """
     Bar chart of entropy across the file (0–8 bits/byte per region).
@@ -239,8 +271,10 @@ class EntropyGraph(QWidget):
         idx = int(event.x() / max(1, self.width()) * len(self._values))
         idx = max(0, min(idx, len(self._values) - 1))
         pct = idx / len(self._values) * 100
-        self.setToolTip(f"Region {idx + 1}/{len(self._values)}  (~{pct:.0f}% into file)\n"
-                        f"{self._values[idx]:.2f} bits/byte")
+        self.setToolTip(
+            f"Region {idx + 1}/{len(self._values)}  (~{pct:.0f}% into file)\n"
+            f"{self._values[idx]:.2f} bits/byte"
+        )
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -272,16 +306,22 @@ class EntropyGraph(QWidget):
             bh = max(1.5, h * min(v, 8.0) / 8.0)
             x = rect.left() + 4 + i * bar_w
             p.setBrush(QColor(entropy_color(v)))
-            p.drawRoundedRect(QRectF(x, rect.bottom() - 4 - bh, max(1.0, bar_w - gap), bh), 1.5, 1.5)
+            p.drawRoundedRect(
+                QRectF(x, rect.bottom() - 4 - bh, max(1.0, bar_w - gap), bh), 1.5, 1.5
+            )
 
 
 # ── Empty state ───────────────────────────────────────────────────────────
 
+
 class EmptyState(QWidget):
     """Centered placeholder: big icon, title, hint and an optional action button."""
+
     action_clicked = pyqtSignal()
 
-    def __init__(self, icon: str, title: str, hint: str = "", action: str = "", parent=None):
+    def __init__(
+        self, icon: str, title: str, hint: str = "", action: str = "", parent=None
+    ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
@@ -295,7 +335,9 @@ class EmptyState(QWidget):
 
         self._title = QLabel(title)
         self._title.setAlignment(Qt.AlignCenter)
-        self._title.setStyleSheet(f"font-size: 17px; font-weight: bold; color: {TEXT_PRIMARY};")
+        self._title.setStyleSheet(
+            f"font-size: 17px; font-weight: bold; color: {TEXT_PRIMARY};"
+        )
         layout.addWidget(self._title)
 
         self._hint = QLabel(hint)
@@ -331,31 +373,40 @@ class EmptyState(QWidget):
 # ── Icon badge ────────────────────────────────────────────────────────────
 
 _KIND_ICONS = {
-    "image":      "🖼",
-    "audio":      "🎵",
-    "video":      "🎬",
-    "text":       "📄",
-    "document":   "📑",
-    "archive":    "📦",
+    "image": "🖼",
+    "audio": "🎵",
+    "video": "🎬",
+    "text": "📄",
+    "document": "📑",
+    "archive": "📦",
     "executable": "⚙",
-    "folder":     "📁",
-    "other":      "📎",
+    "folder": "📁",
+    "other": "📎",
 }
+
 
 def kind_icon(kind: str) -> str:
     return _KIND_ICONS.get(kind, "📎")
 
 
 _KIND_COLORS = {
-    "image": "#4caf82", "audio": "#9d8cff", "video": "#e05c9c", "text": "#5b9cf6",
-    "document": "#f5a623", "archive": "#c88b4a", "executable": "#e05c5c", "other": "#8a90a0",
+    "image": "#4caf82",
+    "audio": "#9d8cff",
+    "video": "#e05c9c",
+    "text": "#5b9cf6",
+    "document": "#f5a623",
+    "archive": "#c88b4a",
+    "executable": "#e05c5c",
+    "other": "#8a90a0",
 }
+
 
 def kind_color(kind: str) -> str:
     return _KIND_COLORS.get(kind, "#8a90a0")
 
 
 # ── Clickable label ───────────────────────────────────────────────────────
+
 
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
@@ -367,11 +418,13 @@ class ClickableLabel(QLabel):
 
 # ── Clipboard helper ──────────────────────────────────────────────────────
 
+
 def copy_to_clipboard(text: str):
     QApplication.clipboard().setText(text)
 
 
 # ── Permission toggle button ──────────────────────────────────────────────
+
 
 class PermToggle(QPushButton):
     """A small toggle button for a single permission bit."""
@@ -402,10 +455,12 @@ class PermToggle(QPushButton):
 
 # ── Desktop integration helpers ───────────────────────────────────────────
 
+
 def open_with_default_app(path: str) -> bool:
     """Open a file or folder with the OS default application."""
     from PyQt5.QtGui import QDesktopServices
     from PyQt5.QtCore import QUrl
+
     return QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
 
@@ -414,6 +469,7 @@ def reveal_in_file_manager(path: str) -> bool:
     import os
     import sys
     import subprocess
+
     try:
         if sys.platform.startswith("win"):
             subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])

@@ -26,7 +26,9 @@ def validate_filename(name: str) -> Optional[str]:
         return "Filename cannot be empty."
     bad = sorted(c for c in set(name) if c in _INVALID_NAME_CHARS or ord(c) < 32)
     if bad:
-        return "Filename contains invalid character(s): " + " ".join(repr(c) for c in bad)
+        return "Filename contains invalid character(s): " + " ".join(
+            repr(c) for c in bad
+        )
     if os.sep in name or (os.altsep and os.altsep in name):
         return "Filename cannot contain a path separator — use Move instead."
     if _IS_WINDOWS and name.rstrip(" .") != name:
@@ -55,6 +57,7 @@ def _safe_rename(src: Path, dest: Path):
 
 
 # ── Rename / Move ──────────────────────────────────────────────────────────
+
 
 def rename_file(path: str, new_name: str) -> tuple[bool, str]:
     """Rename file within the same directory"""
@@ -105,10 +108,14 @@ def copy_file(path: str, dest: str, overwrite: bool = False) -> tuple[bool, str]
         return True, f"Copied to '{target}'."
     except Exception as e:
         return False, str(e)
-    
+
+
 # ── Timestamps ────────────────────────────────────────────────────────────
 
-def set_timestamps(path: str, modified: Optional[float] = None, accessed: Optional[float] = None) -> tuple[bool, str]:
+
+def set_timestamps(
+    path: str, modified: Optional[float] = None, accessed: Optional[float] = None
+) -> tuple[bool, str]:
     """Set atime and/or mtime. Pass None to leave unchanged."""
     try:
         st = os.stat(path)
@@ -118,7 +125,8 @@ def set_timestamps(path: str, modified: Optional[float] = None, accessed: Option
         return True, "Timestamps updated."
     except Exception as e:
         return False, str(e)
-    
+
+
 def can_set_created_time() -> bool:
     """Creation time is only writable through the Win32 API."""
     return _IS_WINDOWS
@@ -142,8 +150,13 @@ def set_created_time(path: str, created: float) -> tuple[bool, str]:
         FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
         kernel32.CreateFileW.restype = wintypes.HANDLE
         handle = kernel32.CreateFileW(
-            str(path), FILE_WRITE_ATTRIBUTES, 0x7, None,
-            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, None,
+            str(path),
+            FILE_WRITE_ATTRIBUTES,
+            0x7,
+            None,
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            None,
         )
         if handle in (None, wintypes.HANDLE(-1).value):
             return False, f"Could not open file (error {ctypes.GetLastError()})."
@@ -151,7 +164,11 @@ def set_created_time(path: str, created: float) -> tuple[bool, str]:
             ok = kernel32.SetFileTime(handle, ctypes.byref(ft), None, None)
         finally:
             kernel32.CloseHandle(handle)
-        return (True, "Creation time updated.") if ok else (False, f"SetFileTime failed (error {ctypes.GetLastError()}).")
+        return (
+            (True, "Creation time updated.")
+            if ok
+            else (False, f"SetFileTime failed (error {ctypes.GetLastError()}).")
+        )
     except Exception as e:
         return False, str(e)
 
@@ -164,9 +181,11 @@ def touch_file(path: str) -> tuple[bool, str]:
         return True, "Timestamps set to now."
     except Exception as e:
         return False, str(e)
-    
+
+
 # ── Permissions ───────────────────────────────────────────────────────────
- 
+
+
 def set_permissions_octal(path: str, octal_str: str) -> tuple[bool, str]:
     """Set permissions via octal string like '0755' (also accepts '755' or '0o755')."""
     if _IS_WINDOWS:
@@ -181,7 +200,8 @@ def set_permissions_octal(path: str, octal_str: str) -> tuple[bool, str]:
         return False, f"Invalid octal: '{octal_str}'."
     except Exception as e:
         return False, str(e)
-    
+
+
 def set_permissions_bits(path: str, **bits) -> tuple[bool, str]:
     """
     Set individual permission bits.
@@ -201,11 +221,17 @@ def set_permissions_bits(path: str, **bits) -> tuple[bool, str]:
             return True, "Permissions updated (Windows: read-only flag)."
         except Exception as e:
             return False, str(e)
-        
+
     bit_map = {
-        "owner_read": stat.S_IRUSR, "owner_write": stat.S_IWUSR, "owner_exec": stat.S_IXUSR,
-        "group_read": stat.S_IRGRP, "group_write": stat.S_IWGRP, "group_exec": stat.S_IXGRP,
-        "other_read": stat.S_IROTH, "other_write": stat.S_IWOTH, "other_exec": stat.S_IXOTH,
+        "owner_read": stat.S_IRUSR,
+        "owner_write": stat.S_IWUSR,
+        "owner_exec": stat.S_IXUSR,
+        "group_read": stat.S_IRGRP,
+        "group_write": stat.S_IWGRP,
+        "group_exec": stat.S_IXGRP,
+        "other_read": stat.S_IROTH,
+        "other_write": stat.S_IWOTH,
+        "other_exec": stat.S_IXOTH,
     }
     try:
         current = stat.S_IMODE(os.stat(path).st_mode)
@@ -219,7 +245,8 @@ def set_permissions_bits(path: str, **bits) -> tuple[bool, str]:
         return True, f"Permissions updated -> {oct(current)}."
     except Exception as e:
         return False, str(e)
-    
+
+
 def hidden_target_path(path: str, hidden: bool) -> str:
     """Path the file will have after set_hidden() (Unix renames; Windows doesn't)."""
     p = Path(path)
@@ -236,16 +263,34 @@ def set_hidden(path: str, hidden: bool) -> tuple[bool, str]:
     """Toggle hidden attribute (Unix: prepend dot; Windows: attrib)."""
     p = Path(path)
     if _IS_WINDOWS:
-        import ctypes
-        FILE_ATTRIBUTES_HIDDEN = 0x02
-        attrs = ctypes.windll.kernel32.GetFileAttributesW(str(p))
-        if hidden:
-            attrs |= FILE_ATTRIBUTES_HIDDEN
-        else:
-            attrs &= ~FILE_ATTRIBUTES_HIDDEN
+        try:
+            import ctypes
 
-        ok = ctypes.windll.kernel32.SetFileAttributesW(str(p), attrs)
-        return (True, "Hidden attribute set.") if ok else (False, "Failed to set attribute.")
+            FILE_ATTRIBUTE_HIDDEN = 0x02
+            INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
+            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+            kernel32.GetFileAttributesW.restype = ctypes.c_uint32
+            attrs = kernel32.GetFileAttributesW(str(p))
+            if attrs == INVALID_FILE_ATTRIBUTES:
+                # Without this check the error value (all bits set) would be written back
+                # as the file's attributes (read-only, system, …)
+                return (
+                    False,
+                    f"Could not read file attributes (error {ctypes.GetLastError()}).",
+                )  # type: ignore[attr-defined]
+            if hidden:
+                attrs |= FILE_ATTRIBUTE_HIDDEN
+            else:
+                attrs &= ~FILE_ATTRIBUTE_HIDDEN
+            ok = kernel32.SetFileAttributesW(str(p), attrs)
+            if not ok:
+                return False, "Failed to set attribute."
+            return (
+                True,
+                "Hidden attribute set." if hidden else "Hidden attribute cleared.",
+            )
+        except Exception as e:
+            return False, str(e)
     else:
         # Unix: rename with/without leading dot
         dest = Path(hidden_target_path(path, hidden))
@@ -260,8 +305,10 @@ def set_hidden(path: str, hidden: bool) -> tuple[bool, str]:
             return True, f"Renamed to '{dest.name}'"
         except Exception as e:
             return False, str(e)
-        
+
+
 # ── Extension ─────────────────────────────────────────────────────────────
+
 
 def extension_target_path(path: str, new_ext: str) -> str:
     """Path the file will have after change_extension()."""
@@ -277,16 +324,24 @@ def change_extension(path: str, new_ext: str) -> tuple[bool, str]:
         new_ext = "." + new_ext
     if new_ext == "." or validate_filename("x" + new_ext):
         return False, f"Invalid extension: '{new_ext}'."
-    dest = p.with_suffix(new_ext)
-    if dest.exists():
+    try:
+        dest = p.with_suffix(new_ext)
+    except ValueError:
+        return False, f"Invalid extension: '{new_ext}'."
+    if dest == p:
+        return True, "Extension unchanged."
+    # Case-only change (.JPG -> .jpg) on a case-insensitive file system: dest "exists" because it *is* p
+    if dest.exists() and not _same_file(p, dest):
         return False, f"'{dest.name}' already exists."
     try:
-        p.rename(dest)
+        _safe_rename(p, dest)
         return True, f"Extension changed to '{new_ext}'."
     except Exception as e:
         return False, str(e)
-    
+
+
 # ── Content truncation / zeroing ──────────────────────────────────────────
+
 
 def truncate_file(path: str, size: int) -> tuple[bool, str]:
     """Truncate file to given byte size."""
@@ -296,7 +351,8 @@ def truncate_file(path: str, size: int) -> tuple[bool, str]:
         return True, f"File truncated to {size} bytes"
     except Exception as e:
         return False, str(e)
-    
+
+
 def zero_file(path: str) -> tuple[bool, str]:
     """Empty file contents (zero bytes)."""
     try:
@@ -305,21 +361,27 @@ def zero_file(path: str) -> tuple[bool, str]:
         return True, "File zeroed (0 bytes)."
     except Exception as e:
         return False, str(e)
-    
+
+
 # ── Audio tags (mutagen) ──────────────────────────────────────────────────
+
 
 def write_audio_tags(path: str, tags: dict[str, str]) -> tuple[bool, str]:
     """Write audio metadata tags via mutagen (easy interface)."""
     try:
         from mutagen._file import File as MutagenFile
+
         mf = MutagenFile(path, easy=True)
         if mf is None:
             return False, "Mutagen cannot handle this file format."
         if mf.tags is None:
             mf.add_tags()
+        mf_tags = mf.tags
+        if mf_tags is None:
+            return False, "Could not create a tag block for this file."
         for k, v in tags.items():
             try:
-                mf.tags[k] = [v]
+                mf_tags[k] = [v]
             except Exception:
                 pass
         mf.save()
@@ -328,11 +390,13 @@ def write_audio_tags(path: str, tags: dict[str, str]) -> tuple[bool, str]:
         return False, "mutagen is not installed."
     except Exception as e:
         return False, str(e)
-    
+
+
 def delete_audio_tags(path: str) -> tuple[bool, str]:
     """Delete all audio tags from a file."""
     try:
         from mutagen._file import File as MutagenFile
+
         mf = MutagenFile(path)
         if mf is None:
             return False, "Mutagen cannot handle this file format."
@@ -342,8 +406,10 @@ def delete_audio_tags(path: str) -> tuple[bool, str]:
         return False, "mutagen is not installed."
     except Exception as e:
         return False, str(e)
-    
+
+
 # ── Batch rename helpers ───────────────────────────────────────────────────
+
 
 def _substitute(name: str, pattern: str, replacement: str) -> str:
     """re.sub with a literal fallback. An empty pattern means "no find/replace"."""
@@ -355,12 +421,16 @@ def _substitute(name: str, pattern: str, replacement: str) -> str:
         return name.replace(pattern, replacement)
 
 
-def batch_rename_preview(paths: list[str], pattern: str, replacement: str) -> list[tuple[str, str]]:
+def batch_rename_preview(
+    paths: list[str], pattern: str, replacement: str
+) -> list[tuple[str, str]]:
     """
     Preview batch rename: find `pattern` in filename, replace with `replacement`.
     Returns list of (old_name, new_name).
     """
-    return [(Path(p).name, _substitute(Path(p).name, pattern, replacement)) for p in paths]
+    return [
+        (Path(p).name, _substitute(Path(p).name, pattern, replacement)) for p in paths
+    ]
 
 
 def batch_rename_conflicts(paths: list[str], new_names: list[str]) -> dict[int, str]:
@@ -385,12 +455,18 @@ def batch_rename_conflicts(paths: list[str], new_names: list[str]) -> dict[int, 
             problems.setdefault(targets[dest], f"Duplicate target name '{new_name}'.")
             continue
         targets[dest] = i
-        if os.path.exists(dest) and dest not in sources and not _same_file(p, Path(dest)):
+        if (
+            os.path.exists(dest)
+            and dest not in sources
+            and not _same_file(p, Path(dest))
+        ):
             problems[i] = f"'{new_name}' already exists."
     return problems
 
 
-def batch_rename_to(paths: list[str], new_names: list[str]) -> list[tuple[str, bool, str, str]]:
+def batch_rename_to(
+    paths: list[str], new_names: list[str]
+) -> list[tuple[str, bool, str, str]]:
     """
     Rename each path to the matching new name (same directory).
     Validates the whole batch first so a collision can't leave it half-applied,
@@ -437,7 +513,9 @@ def batch_rename_to(paths: list[str], new_names: list[str]) -> list[tuple[str, b
     return results
 
 
-def batch_rename_apply(paths: list[str], pattern: str, replacement: str) -> list[tuple[str, bool, str]]:
+def batch_rename_apply(
+    paths: list[str], pattern: str, replacement: str
+) -> list[tuple[str, bool, str]]:
     """
     Apply batch rename. Returns list of (original_path, success, message).
     """

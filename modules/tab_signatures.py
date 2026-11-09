@@ -5,19 +5,28 @@ tab_signatures.py — Display digital signature information for files.
 from __future__ import annotations
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QTextEdit, QGroupBox,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
     QProgressBar,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 from modules.file_info import FileInfo
 from modules.widgets import SectionLabel, StatusBanner
-from modules.theme import BG_CARD, BORDER, ACCENT, SUCCESS, ERROR, TEXT_SECONDARY
-from modules.signature_inspector import inspect_signature, check_pgp_signature, SignatureInfo
+from modules.theme import TEXT_SECONDARY
+from modules.signature_inspector import (
+    inspect_signature,
+    check_pgp_signature,
+    SignatureInfo,
+)
 
 
 # ── Worker thread ─────────────────────────────────────────────────────────
+
 
 class SignatureWorker(QObject):
     progress = pyqtSignal(int)  # Progress percentage
@@ -56,6 +65,7 @@ class SignatureWorker(QObject):
 
 # ── Tab ───────────────────────────────────────────────────────────────────
 
+
 class SignaturesTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -77,8 +87,10 @@ class SignaturesTab(QWidget):
         outer.addWidget(body, 1)
 
         body_layout.addWidget(SectionLabel("Digital Signatures"))
-        intro = QLabel("Checks embedded code signatures (Windows Authenticode, Apple codesign) and "
-                       "detached PGP/GPG signatures (<file>.sig / .asc next to the file).")
+        intro = QLabel(
+            "Checks embedded code signatures (Windows Authenticode, Apple codesign) and "
+            "detached PGP/GPG signatures (<file>.sig / .asc next to the file)."
+        )
         intro.setWordWrap(True)
         intro.setStyleSheet(f"color: {TEXT_SECONDARY};")
         body_layout.addWidget(intro)
@@ -102,7 +114,9 @@ class SignaturesTab(QWidget):
         # Results area
         self._results_text = QTextEdit()
         self._results_text.setReadOnly(True)
-        self._results_text.setPlaceholderText("Click “Inspect Signatures” to check this file.")
+        self._results_text.setPlaceholderText(
+            "Click “Inspect Signatures” to check this file."
+        )
         body_layout.addWidget(self._results_text, 1)
 
         self._set_enabled(False)
@@ -142,7 +156,9 @@ class SignaturesTab(QWidget):
         worker.finished.connect(thread.quit)
         worker.error.connect(lambda e: self._banner.show_message(e, "error"))
         worker.error.connect(thread.quit)
-        thread.finished.connect(lambda: self._inspect_btn.setEnabled(self._info is not None))
+        thread.finished.connect(
+            lambda: self._inspect_btn.setEnabled(self._info is not None)
+        )
         thread.finished.connect(lambda: self._progress.setVisible(False))
         thread.finished.connect(worker.deleteLater)
         thread.finished.connect(self._on_thread_finished)
@@ -171,7 +187,9 @@ class SignaturesTab(QWidget):
         elif sig_info.is_signed and not sig_info.is_valid:
             self._banner.show_message("Invalid signature detected.", "error")
         elif sig_info.error_message:
-            self._banner.show_message(f"Signature inspection failed: {sig_info.error_message}", "warning")
+            self._banner.show_message(
+                f"Signature inspection failed: {sig_info.error_message}", "warning"
+            )
         else:
             self._banner.show_message("No digital signature found.", "info")
 
@@ -181,15 +199,15 @@ class SignaturesTab(QWidget):
             return
 
         text = f"""Digital Signature Information
-{'='*40}
+{"=" * 40}
 
-Status: {'Signed' if sig_info.is_signed else 'Not Signed'}
+Status: {"Signed" if sig_info.is_signed else "Not Signed"}
 """
 
         if sig_info.is_signed:
             text += f"""
-Validity: {'Valid' if sig_info.is_valid else 'Invalid'}
-Signature Type: {sig_info.signature_type or 'Unknown'}
+Validity: {"Valid" if sig_info.is_valid else "Invalid"}
+Signature Type: {sig_info.signature_type or "Unknown"}
 """
 
             if sig_info.signer_name:
