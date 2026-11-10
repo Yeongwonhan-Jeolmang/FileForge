@@ -3,38 +3,39 @@ tab_rename.py — Rename, move, copy, extension change, hidden toggle.
 """
 
 from __future__ import annotations
-from pathlib import Path
 
 import os
+from pathlib import Path
+
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QCheckBox,
+    QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QCheckBox,
-    QFileDialog,
-    QScrollArea,
-    QFrame,
     QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import pyqtSignal
 
 from modules.file_info import FileInfo
 from modules.file_ops import (
-    rename_file,
-    move_file,
-    copy_file,
     change_extension,
-    set_hidden,
+    copy_file,
+    extension_target_path,
     hidden_target_path,
     move_destination,
-    extension_target_path,
+    move_file,
+    rename_file,
+    set_hidden,
     validate_filename,
 )
-from modules.widgets import SectionLabel, StatusBanner, Card
 from modules.theme import ERROR
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 
 class RenameTab(QWidget):

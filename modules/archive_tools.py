@@ -3,10 +3,10 @@ archive_tools.py — Utilities to inspect and preview archive contents.
 """
 
 from __future__ import annotations
-import zipfile
+
 import tarfile
+import zipfile
 from pathlib import Path
-from typing import Optional
 
 from modules.file_info import human_size
 
@@ -21,7 +21,7 @@ except ImportError:
 def _row(
     name: str,
     size: int,
-    compressed: Optional[int],
+    compressed: int | None,
     kind: str,
     is_dir: bool = False,
     encrypted: bool = False,
@@ -41,7 +41,7 @@ def _row(
 
 
 def list_archive_contents(
-    path: str, limit: Optional[int] = None
+    path: str, limit: int | None = None
 ) -> list[dict[str, str]]:
     """
     List entries in a ZIP / TAR(.gz/.bz2/.xz) / 7z archive.
@@ -106,7 +106,7 @@ def list_archive_contents(
     return []
 
 
-def archive_entry_count(path: str) -> Optional[int]:
+def archive_entry_count(path: str) -> int | None:
     """Total number of entries when it is cheap to know (ZIP central directory), else None."""
     try:
         if zipfile.is_zipfile(path):

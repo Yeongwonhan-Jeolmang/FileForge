@@ -9,18 +9,19 @@ Usage:
     python main.py path/to/folder  # browse a folder
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 import traceback
 from logging.handlers import RotatingFileHandler
 
 # Ensure the package root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
-from modules import __version__, APP_NAME
+from PyQt5.QtWidgets import QApplication, QMessageBox
+
+from modules import APP_NAME, __version__
 
 
 def _log_path() -> str:

@@ -3,8 +3,10 @@ file_watcher.py — Watch files for changes and auto-refresh.
 """
 
 from __future__ import annotations
+
 import os
-from PyQt5.QtCore import QFileSystemWatcher, QObject, pyqtSignal, QTimer
+
+from PyQt5.QtCore import QFileSystemWatcher, QObject, QTimer, pyqtSignal
 
 
 class FileWatcher(QObject):

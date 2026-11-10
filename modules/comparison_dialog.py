@@ -3,33 +3,34 @@ comparison_dialog.py — Dialog for comparing two files.
 """
 
 from __future__ import annotations
-import os
-import html
+
 import difflib
 import filecmp
+import html
+import os
 from typing import Any
+
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtWidgets import (
+    QCheckBox,
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QTextEdit,
     QFileDialog,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
-    QTabWidget,
-    QWidget,
     QProgressBar,
-    QCheckBox,
+    QPushButton,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
-from modules.theme import TEXT_SECONDARY, TEXT_MUTED, SUCCESS, ERROR, INFO, WARNING
-from modules.file_info import read_file_info
 from modules.entropy_calculator import calculate_entropy
-
+from modules.file_info import read_file_info
+from modules.theme import ERROR, INFO, SUCCESS, TEXT_MUTED, TEXT_SECONDARY, WARNING
 
 # ── Worker thread ─────────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ class ComparisonWorker(QObject):
                         )
                     results["hex_diff"] = hex_diff
 
-                except (OSError, IOError):
+                except OSError:
                     pass
 
             self.progress.emit(100)
@@ -603,7 +604,7 @@ Differences Found: {len(differences)}
             )
             self._content_tabs.setCurrentIndex(1)
 
-        if "hex_diff" in results and results["hex_diff"]:
+        if results.get("hex_diff"):
             self._hex_diff_edit.setPlainText("\n".join(results["hex_diff"]))
         else:
             self._hex_diff_edit.setPlainText(

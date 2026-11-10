@@ -3,19 +3,21 @@ folder_tools.py — Utilities for folder and duplicate analysis, summary reports
 """
 
 from __future__ import annotations
-import os
-import csv
-import json
-import time
-import heapq
-import hashlib
-from collections import defaultdict
-from pathlib import Path
-from typing import Any, Callable, Iterator, Optional
-from concurrent.futures import ThreadPoolExecutor
-from modules.metadata_cache import cached_hash
 
-from modules.file_info import human_size, classify_path, fmt_time
+import csv
+import hashlib
+import heapq
+import json
+import os
+import time
+from collections import defaultdict
+from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Optional
+
+from modules.file_info import classify_path, fmt_time, human_size
+from modules.metadata_cache import cached_hash
 
 ProgressCb = Optional[Callable[[int, str], None]]  # (files_processed, current_path)
 CancelCb = Optional[Callable[[], bool]]

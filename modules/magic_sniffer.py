@@ -7,8 +7,8 @@ so FileForge can flag extension mismatches.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -183,7 +183,7 @@ _SIGNATURES: list[tuple[int, bytes, str, str, str, tuple]] = [
 SNIFF_BYTES = 512
 
 
-def _sniff_riff(head: bytes) -> Optional[SniffResult]:
+def _sniff_riff(head: bytes) -> SniffResult | None:
     """RIFF containers: WAV, AVI, WEBP share the same 4-byte prefix."""
     if len(head) < 12 or head[:4] != b"RIFF":
         return None
@@ -199,7 +199,7 @@ def _sniff_riff(head: bytes) -> Optional[SniffResult]:
     )
 
 
-def _sniff_iso_bmff(head: bytes) -> Optional[SniffResult]:
+def _sniff_iso_bmff(head: bytes) -> SniffResult | None:
     """ISO base media (MP4, MOV, M4A, HEIC, AVIF) — 'ftyp' box at offset 4."""
     if len(head) < 12 or head[4:8] != b"ftyp":
         return None
@@ -233,7 +233,7 @@ def _looks_like_text(head: bytes) -> bool:
     return printable / len(head) > 0.95
 
 
-def sniff_bytes(head: bytes) -> Optional[SniffResult]:
+def sniff_bytes(head: bytes) -> SniffResult | None:
     """Identify content from its first bytes. Returns None when unknown."""
     if not head:
         return None
@@ -273,7 +273,7 @@ def sniff_bytes(head: bytes) -> Optional[SniffResult]:
     return None
 
 
-def sniff_file(path: str) -> Optional[SniffResult]:
+def sniff_file(path: str) -> SniffResult | None:
     """Read the file header and identify it. Never raises."""
     try:
         with open(path, "rb") as f:
@@ -283,7 +283,7 @@ def sniff_file(path: str) -> Optional[SniffResult]:
     return sniff_bytes(head)
 
 
-def extension_mismatch(result: Optional[SniffResult], suffix: str) -> bool:
+def extension_mismatch(result: SniffResult | None, suffix: str) -> bool:
     """
     True when the detected content clearly contradicts the file extension.
     Plain text and unknown content never count as a mismatch (too ambiguous).

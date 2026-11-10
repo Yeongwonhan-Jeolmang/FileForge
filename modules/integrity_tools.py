@@ -3,12 +3,14 @@ integrity_tools.py — Snapshot generation, verification, and audit trail storag
 """
 
 from __future__ import annotations
+
+import json
 import os
 import sys
-import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from modules.file_info import compute_hashes, fmt_time
 

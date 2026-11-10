@@ -3,31 +3,32 @@ tab_preview.py — Rich preview pane for files, archives, and document/media met
 """
 
 from __future__ import annotations
+
 import os
 
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QImageReader, QPixmap
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QScrollArea,
-    QPlainTextEdit,
     QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
-    QSplitter,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPixmap, QImageReader
 
+from modules.archive_tools import archive_entry_count, list_archive_contents
 from modules.file_info import FileInfo
-from modules.archive_tools import list_archive_contents, archive_entry_count
 from modules.metadata_cache import get_cached_hashes
+from modules.theme import ACCENT, BG_CARD, BG_MID, BORDER, TEXT_SECONDARY
 from modules.widgets import StatusBanner
-from modules.theme import BG_CARD, BORDER, TEXT_SECONDARY, ACCENT, BG_MID
 
 ARCHIVE_PREVIEW_LIMIT = 1000
 TEXT_PREVIEW_CHARS = 200_000

@@ -3,41 +3,42 @@ widgets.py — Reusable PyQt5 widget components for FileForge.
 """
 
 from __future__ import annotations
-from PyQt5.QtWidgets import (
-    QWidget,
-    QLabel,
-    QHBoxLayout,
-    QVBoxLayout,
-    QPushButton,
-    QFrame,
-    QSizePolicy,
-    QProgressBar,
-    QApplication,
-)
+
 from PyQt5.QtCore import (
+    QRectF,
+    QSize,
     Qt,
     QTimer,
     pyqtSignal,
-    QRectF,
-    QSize,
 )
 from PyQt5.QtGui import QColor, QPainter, QPen
-from modules.theme import (
-    ACCENT,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    TEXT_MUTED,
-    BG_MID,
-    BORDER,
-    SUCCESS,
-    ERROR,
-    WARNING,
-    INFO,
-    ON_ACCENT,
-    rgba,
-    entropy_color,
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
+from modules.theme import (
+    ACCENT,
+    BG_MID,
+    BORDER,
+    ERROR,
+    INFO,
+    ON_ACCENT,
+    SUCCESS,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    WARNING,
+    entropy_color,
+    rgba,
+)
 
 # ── Card container ─────────────────────────────────────────────────────────
 
@@ -458,8 +459,8 @@ class PermToggle(QPushButton):
 
 def open_with_default_app(path: str) -> bool:
     """Open a file or folder with the OS default application."""
-    from PyQt5.QtGui import QDesktopServices
     from PyQt5.QtCore import QUrl
+    from PyQt5.QtGui import QDesktopServices
 
     return QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
@@ -467,8 +468,8 @@ def open_with_default_app(path: str) -> bool:
 def reveal_in_file_manager(path: str) -> bool:
     """Show the file selected in Explorer / Finder, or open its folder on Linux."""
     import os
-    import sys
     import subprocess
+    import sys
 
     try:
         if sys.platform.startswith("win"):

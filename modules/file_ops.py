@@ -4,15 +4,15 @@ Every function returns (success: bool, message: str).
 """
 
 from __future__ import annotations
+
 import os
+import platform
 import re
 import shutil
-import time
-import platform
 import stat
+import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 _IS_WINDOWS = platform.system() == "Windows"
 
@@ -20,7 +20,7 @@ _IS_WINDOWS = platform.system() == "Windows"
 _INVALID_NAME_CHARS = set('<>:"/\\|?*') if _IS_WINDOWS else {"/", "\0"}
 
 
-def validate_filename(name: str) -> Optional[str]:
+def validate_filename(name: str) -> str | None:
     """Return an error message if `name` is not a valid bare filename, else None."""
     if not name or name in (".", ".."):
         return "Filename cannot be empty."
@@ -114,7 +114,7 @@ def copy_file(path: str, dest: str, overwrite: bool = False) -> tuple[bool, str]
 
 
 def set_timestamps(
-    path: str, modified: Optional[float] = None, accessed: Optional[float] = None
+    path: str, modified: float | None = None, accessed: float | None = None
 ) -> tuple[bool, str]:
     """Set atime and/or mtime. Pass None to leave unchanged."""
     try:

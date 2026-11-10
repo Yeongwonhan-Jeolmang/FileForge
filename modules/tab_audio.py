@@ -4,25 +4,24 @@ tab_audio.py — Edit audio metadata tags (via mutagen).
 
 from __future__ import annotations
 
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QFrame,
     QLineEdit,
-    QScrollArea,
-    QFormLayout,
     QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
 
 from modules.file_info import FileInfo
-from modules.file_ops import write_audio_tags, delete_audio_tags
-from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import TEXT_SECONDARY, TEXT_MUTED
-
+from modules.file_ops import delete_audio_tags, write_audio_tags
+from modules.theme import TEXT_MUTED, TEXT_SECONDARY
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 # Standard ID3 / Vorbis tags (easy interface names)
 COMMON_TAGS = [

@@ -3,9 +3,11 @@ entropy_calculator.py — Calculate Shannon entropy for files.
 """
 
 from __future__ import annotations
+
 import math
 import os
 from collections import Counter
+
 from modules.metadata_cache import cached_entropy
 
 
@@ -54,7 +56,7 @@ def calculate_entropy(file_path: str, sample_size: int | None = None) -> float:
 
         return entropy_of_bytes(data)
 
-    except (OSError, IOError):
+    except OSError:
         return 0.0
 
 

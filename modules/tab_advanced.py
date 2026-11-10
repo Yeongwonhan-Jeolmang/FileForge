@@ -4,34 +4,34 @@ tab_advanced.py — Advanced operations: truncate, zero, extended attributes,
 """
 
 from __future__ import annotations
+
 import os
 
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QFontDatabase
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
+    QAbstractItemView,
+    QComboBox,
     QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QSpinBox,
     QTreeWidget,
     QTreeWidgetItem,
-    QMessageBox,
-    QAbstractItemView,
-    QPlainTextEdit,
-    QComboBox,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFontDatabase
 
-from modules.file_info import FileInfo
+from modules.file_info import FileInfo, human_size
 from modules.file_ops import truncate_file, zero_file
-from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import BORDER, TEXT_MUTED, TEXT_SECONDARY, HEX_BG, HEX_FG
-from modules.file_info import human_size
+from modules.theme import BORDER, HEX_BG, HEX_FG, TEXT_MUTED, TEXT_SECONDARY
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 
 class AdvancedTab(QWidget):

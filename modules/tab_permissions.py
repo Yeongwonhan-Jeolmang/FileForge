@@ -3,27 +3,27 @@ tab_permissions.py — Visual permission editor with bit toggles and octal input
 """
 
 from __future__ import annotations
+
 import platform
 
+from PyQt5.QtCore import QRegExp, Qt, pyqtSignal
+from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QFrame,
     QLineEdit,
+    QPushButton,
     QScrollArea,
-    QGridLayout,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
-from PyQt5.QtGui import QRegExpValidator
 
 from modules.file_info import FileInfo, PermissionInfo
 from modules.file_ops import set_permissions_bits, set_permissions_octal
-from modules.widgets import SectionLabel, PermToggle, StatusBanner, Card
-from modules.theme import BORDER, ACCENT, TEXT_SECONDARY, TEXT_MUTED
-
+from modules.theme import ACCENT, BORDER, TEXT_MUTED, TEXT_SECONDARY
+from modules.widgets import Card, PermToggle, SectionLabel, StatusBanner
 
 # ── Preset permission sets ─────────────────────────────────────────────────
 PRESETS = {

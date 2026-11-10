@@ -3,42 +3,43 @@ tab_strings.py — Display printable strings extracted from binary files.
 """
 
 from __future__ import annotations
+
 import re
 import threading
 
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QComboBox,
-    QSpinBox,
-    QListView,
-    QTextEdit,
-    QFileDialog,
-    QSplitter,
-    QCheckBox,
-    QProgressBar,
-    QAbstractItemView,
-    QApplication,
-)
 from PyQt5.QtCore import (
-    Qt,
-    QThread,
-    pyqtSignal,
-    QObject,
     QAbstractListModel,
     QModelIndex,
+    QObject,
+    Qt,
+    QThread,
     QTimer,
     QVariant,
+    pyqtSignal,
+)
+from PyQt5.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListView,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from modules.file_info import FileInfo
-from modules.widgets import StatusBanner, Card
-from modules.theme import TEXT_MUTED
 from modules.strings_extractor import extract_strings
+from modules.theme import TEXT_MUTED
+from modules.widgets import Card, StatusBanner
 
 MAX_STRINGS = 500_000
 
@@ -476,8 +477,7 @@ Hex dump of string:
             return
         try:
             with open(path, "w", encoding="utf-8") as f:
-                for offset, string in self._model.visible_entries():
-                    f.write(f"{offset:08X}\t{string}\n")
+                f.writelines(f"{offset:08X}\t{string}\n" for offset, string in self._model.visible_entries())
             self._banner.show_message(
                 f"Exported {self._model.rowCount():,} strings.", "success"
             )

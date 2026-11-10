@@ -9,6 +9,7 @@ is imported. Changing the theme therefore takes effect after a restart.
 """
 
 from __future__ import annotations
+
 import os
 import tempfile
 

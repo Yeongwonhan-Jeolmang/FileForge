@@ -8,12 +8,13 @@ grow memory without limit.
 """
 
 from __future__ import annotations
-import time
+
 import os
 import threading
+import time
 from collections import OrderedDict
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 
 class MetadataCache:
@@ -25,7 +26,7 @@ class MetadataCache:
         self._max = max_entries
         self._lock = threading.Lock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get cached value if not expired."""
         with self._lock:
             entry = self._cache.get(key)

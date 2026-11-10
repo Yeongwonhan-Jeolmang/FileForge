@@ -4,20 +4,21 @@ Returns a rich FileInfo dataclass used across the app.
 """
 
 from __future__ import annotations
-import os
-import stat
-import time
-import platform
-import logging
+
 import hashlib
+import logging
 import mimetypes
+import os
+import platform
+import stat
 import subprocess
+import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional, Callable
 from pathlib import Path
 
-from modules.magic_sniffer import sniff_file, extension_mismatch
+from modules.magic_sniffer import extension_mismatch, sniff_file
 
 logger = logging.getLogger(__name__)
 
@@ -103,17 +104,17 @@ class ImageMetadata:
     height: int
     mode: str
     format: str
-    dpi: Optional[tuple]
+    dpi: tuple | None
     has_exif: bool
     exif: dict = field(default_factory=dict)
 
 
 @dataclass
 class AudioMetadata:
-    duration: Optional[float]
-    bitrate: Optional[int]
-    sample_rate: Optional[int]
-    channels: Optional[int]
+    duration: float | None
+    bitrate: int | None
+    sample_rate: int | None
+    channels: int | None
     tags: dict = field(default_factory=dict)
 
 
@@ -124,7 +125,7 @@ class DocumentMetadata:
     author: str = ""
     producer: str = ""
     subject: str = ""
-    pages: Optional[int] = None
+    pages: int | None = None
     software: str = ""
     topic: str = ""
     comment: str = ""
@@ -133,10 +134,10 @@ class DocumentMetadata:
 
 @dataclass
 class VideoMetadata:
-    duration: Optional[float] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    bitrate: Optional[int] = None
+    duration: float | None = None
+    width: int | None = None
+    height: int | None = None
+    bitrate: int | None = None
     codec: str = ""
     format: str = ""
 
@@ -171,17 +172,17 @@ class FileInfo:
     group: str
 
     # Hashes (computed lazily)
-    md5: Optional[str] = None
-    sha1: Optional[str] = None
-    sha256: Optional[str] = None
-    sha512: Optional[str] = None
-    blake2: Optional[str] = None
+    md5: str | None = None
+    sha1: str | None = None
+    sha256: str | None = None
+    sha512: str | None = None
+    blake2: str | None = None
 
     # Rich metadata
-    image_meta: Optional[ImageMetadata] = None
-    audio_meta: Optional[AudioMetadata] = None
-    document_meta: Optional[DocumentMetadata] = None
-    video_meta: Optional[VideoMetadata] = None
+    image_meta: ImageMetadata | None = None
+    audio_meta: AudioMetadata | None = None
+    document_meta: DocumentMetadata | None = None
+    video_meta: VideoMetadata | None = None
 
     # Extended attributes and platform-specific extras
     xattrs: dict = field(default_factory=dict)
@@ -232,7 +233,8 @@ def _owner_group(st) -> tuple[str, str]:
     if _IS_WINDOWS:
         return "N/A", "N/A"
     try:
-        import pwd, grp
+        import grp
+        import pwd
 
         owner = pwd.getpwuid(st.st_uid).pw_name
         group = grp.getgrgid(st.st_gid).gr_name
@@ -322,7 +324,7 @@ def classify_path(path: str) -> str:
     return _classify(mime or "application/octet-stream", Path(path).suffix.lower())
 
 
-def _image_meta(path: str) -> Optional[ImageMetadata]:
+def _image_meta(path: str) -> ImageMetadata | None:
     if not HAS_PIL:
         return None
     try:
@@ -365,7 +367,7 @@ def _image_meta(path: str) -> Optional[ImageMetadata]:
         return None
 
 
-def _audio_meta(path: str) -> Optional[AudioMetadata]:
+def _audio_meta(path: str) -> AudioMetadata | None:
     if not HAS_MUTAGEN:
         logger.debug("Mutagen not installed, skipping audio metadata")
         return None
@@ -390,7 +392,7 @@ def _audio_meta(path: str) -> Optional[AudioMetadata]:
         return None
 
 
-def _document_meta(path: str, suffix: str) -> Optional[DocumentMetadata]:
+def _document_meta(path: str, suffix: str) -> DocumentMetadata | None:
     if suffix == ".pdf" and HAS_PYPDF2:
         try:
             reader = PdfReader(path)
@@ -482,7 +484,7 @@ def _document_meta(path: str, suffix: str) -> Optional[DocumentMetadata]:
     return None
 
 
-def _video_meta(path: str) -> Optional[VideoMetadata]:
+def _video_meta(path: str) -> VideoMetadata | None:
     if not HAS_MEDIainfo:
         return None
     try:
@@ -632,7 +634,7 @@ def compute_hashes(
     path: str,
     algorithms: list[str] | None = None,
     progress_cb=None,
-    cancel_cb: Optional[Callable[[], bool]] = None,
+    cancel_cb: Callable[[], bool] | None = None,
 ) -> dict[str, str]:
     """
     Compute file hashes. algorithms: list of 'md5','sha1','sha256','sha512','blake2'.

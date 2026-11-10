@@ -3,28 +3,29 @@ tab_hashes.py — Compute & verify MD5 / SHA-1 / SHA-256 / SHA-512 / BLAKE2 hash
 """
 
 from __future__ import annotations
-import time
-import threading
 
+import threading
+import time
+
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QApplication,
+    QCheckBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QFrame,
     QLineEdit,
-    QCheckBox,
+    QPushButton,
     QScrollArea,
-    QApplication,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 
-from modules.file_info import FileInfo, compute_hashes, HashCancelled, human_size
+from modules.file_info import FileInfo, HashCancelled, compute_hashes, human_size
 from modules.metadata_cache import get_cached_hashes, store_hashes
 from modules.settings_dialog import AppSettings
-from modules.widgets import SectionLabel, StatusBanner, HashProgressBar, Card
-from modules.theme import SUCCESS, ERROR, TEXT_SECONDARY
+from modules.theme import ERROR, SUCCESS, TEXT_SECONDARY
+from modules.widgets import Card, HashProgressBar, SectionLabel, StatusBanner
 
 ALGORITHMS = ("md5", "sha1", "sha256", "sha512", "blake2")
 _LABELS = {

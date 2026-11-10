@@ -3,46 +3,46 @@ sidebar.py — Left-panel file browser: recent files + directory tree.
 """
 
 from __future__ import annotations
+
 import os
 from pathlib import Path
 
+from PyQt5.QtCore import QRect, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QColor, QFont, QPainter
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QTreeWidget,
-    QTreeWidgetItem,
+    QAbstractItemView,
     QFileDialog,
     QFrame,
+    QHBoxLayout,
+    QLabel,
     QLineEdit,
-    QAbstractItemView,
     QListWidget,
     QListWidgetItem,
-    QTabWidget,
     QMenu,
-    QStyledItemDelegate,
+    QPushButton,
+    QSizePolicy,
     QStyle,
+    QStyledItemDelegate,
     QStyleOptionViewItem,
+    QTabWidget,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRect, QTimer
-from PyQt5.QtGui import QColor, QFont, QPainter
 
-from modules.theme import (
-    BG_HOVER,
-    BG_SELECTED,
-    ACCENT,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    TEXT_MUTED,
-    ERROR,
-)
-from modules.widgets import kind_icon, copy_to_clipboard, reveal_in_file_manager
 from modules.file_info import classify_path, human_size
 from modules.settings_dialog import AppSettings
-
+from modules.theme import (
+    ACCENT,
+    BG_HOVER,
+    BG_SELECTED,
+    ERROR,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+)
+from modules.widgets import copy_to_clipboard, kind_icon, reveal_in_file_manager
 
 MAX_RECENT = 20
 _PLACEHOLDER = "__loading__"
@@ -501,7 +501,8 @@ class Sidebar(QWidget):
         import platform
 
         if platform.system() == "Windows":
-            import string, ctypes
+            import ctypes
+            import string
 
             drives = []
             home = str(Path.home())

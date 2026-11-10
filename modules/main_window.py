@@ -3,54 +3,55 @@ main_window.py — Top-level QMainWindow: sidebar + tabbed editor area.
 """
 
 from __future__ import annotations
-import os
-import logging
 
+import logging
+import os
+
+from PyQt5.QtCore import QByteArray, QObject, QSettings, Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
-    QMainWindow,
-    QWidget,
+    QAction,
+    QApplication,
+    QFileDialog,
     QHBoxLayout,
-    QVBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
     QSplitter,
     QTabWidget,
-    QAction,
-    QLabel,
-    QFileDialog,
-    QMessageBox,
-    QApplication,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, QTimer, QSettings, QByteArray
-from PyQt5.QtGui import QKeySequence
 
 from modules import __version__
+from modules.comparison_dialog import ComparisonDialog
+from modules.file_info import FileInfo, read_file_info
+from modules.file_watcher import FileWatcher
+from modules.settings_dialog import AppSettings, SettingsDialog
+from modules.sidebar import Sidebar
+from modules.tab_advanced import AdvancedTab
+from modules.tab_audio import AudioTab
+from modules.tab_batch import BatchTab
+from modules.tab_folder_analysis import FolderAnalysisTab
+from modules.tab_hashes import HashesTab
+from modules.tab_integrity import IntegrityTab
+from modules.tab_overview import OverviewTab
+from modules.tab_permissions import PermissionsTab
+from modules.tab_preview import PreviewTab
+from modules.tab_rename import RenameTab
+from modules.tab_signatures import SignaturesTab
+from modules.tab_strings import StringsTab
+from modules.tab_timestamps import TimestampsTab
 from modules.theme import (
-    TEXT_SECONDARY,
     TEXT_MUTED,
+    TEXT_SECONDARY,
     WARNING,
     build_stylesheet,
 )
-from modules.file_info import read_file_info, FileInfo
-from modules.sidebar import Sidebar
-from modules.tab_overview import OverviewTab
-from modules.tab_rename import RenameTab
-from modules.tab_timestamps import TimestampsTab
-from modules.tab_permissions import PermissionsTab
-from modules.tab_hashes import HashesTab
-from modules.tab_audio import AudioTab
-from modules.tab_batch import BatchTab
-from modules.tab_advanced import AdvancedTab
-from modules.tab_folder_analysis import FolderAnalysisTab
-from modules.tab_integrity import IntegrityTab
-from modules.tab_preview import PreviewTab
-from modules.settings_dialog import SettingsDialog, AppSettings
-from modules.file_watcher import FileWatcher
-from modules.tab_strings import StringsTab
-from modules.tab_signatures import SignaturesTab
-from modules.comparison_dialog import ComparisonDialog
 from modules.widgets import (
     copy_to_clipboard,
-    reveal_in_file_manager,
     open_with_default_app,
+    reveal_in_file_manager,
 )
 
 logger = logging.getLogger(__name__)

@@ -3,53 +3,53 @@ tab_folder_analysis.py — Folder scan, duplicate finder, and export/reporting U
 """
 
 from __future__ import annotations
+
 import os
 import threading
 from pathlib import Path
 
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
     QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMenu,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
+    QTabWidget,
+    QTextEdit,
     QTreeWidget,
     QTreeWidgetItem,
-    QSplitter,
-    QTextEdit,
-    QSizePolicy,
-    QProgressBar,
-    QHeaderView,
-    QMenu,
-    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QObject
-from PyQt5.QtGui import QColor
 
-from modules.folder_tools import (
-    scan_folder,
-    find_duplicates,
-    export_report_json,
-    export_report_csv,
-)
 from modules.file_info import human_size
-from modules.widgets import (
-    SectionLabel,
-    StatusBanner,
-    Card,
-    kind_icon,
-    kind_color,
-    copy_to_clipboard,
-    reveal_in_file_manager,
+from modules.folder_tools import (
+    export_report_csv,
+    export_report_json,
+    find_duplicates,
+    scan_folder,
 )
 from modules.theme import (
-    TEXT_SECONDARY,
     TEXT_MUTED,
     TEXT_PRIMARY,
+    TEXT_SECONDARY,
     WARNING,
 )
-
+from modules.widgets import (
+    Card,
+    SectionLabel,
+    StatusBanner,
+    copy_to_clipboard,
+    kind_color,
+    kind_icon,
+    reveal_in_file_manager,
+)
 
 # ── Worker ────────────────────────────────────────────────────────────────
 

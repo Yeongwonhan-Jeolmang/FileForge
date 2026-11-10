@@ -3,18 +3,19 @@ strings_extractor.py — Extract printable strings from binary files.
 """
 
 from __future__ import annotations
+
 import os
 import re
-from typing import List, Tuple, Iterator, Optional, Callable
+from collections.abc import Callable, Iterator
 
 
 def extract_strings(
     file_path: str,
     min_length: int = 4,
     encoding: str = "ascii",
-    max_results: Optional[int] = None,
-    cancel_cb: Optional[Callable[[], bool]] = None,
-) -> List[Tuple[int, str]]:
+    max_results: int | None = None,
+    cancel_cb: Callable[[], bool] | None = None,
+) -> list[tuple[int, str]]:
     """
     Extract printable strings from a binary file.
 
@@ -41,13 +42,13 @@ def extract_strings(
             if cancel_cb is not None and not (len(strings) & 0x3FF) and cancel_cb():
                 break
 
-    except (OSError, IOError):
+    except OSError:
         pass
 
     return strings
 
 
-def _build_pattern(encoding: str, min_length: int) -> "re.Pattern[bytes]":
+def _build_pattern(encoding: str, min_length: int) -> re.Pattern[bytes]:
     """Compile the byte-level regex that matches a printable run for `encoding`."""
     n = str(max(1, min_length)).encode()
     if encoding == "utf-8":
@@ -75,7 +76,7 @@ def extract_strings_streaming(
     encoding: str = "ascii",
     chunk_size: int = 1_000_000,
     max_string_length: int = 65_536,
-) -> Iterator[Tuple[int, str]]:
+) -> Iterator[tuple[int, str]]:
     """
     Extract printable strings from a binary file using streaming approach.
 
@@ -149,7 +150,7 @@ def extract_strings_with_context(
     min_length: int = 4,
     encoding: str = "ascii",
     context_bytes: int = 16,
-) -> List[Tuple[int, str, bytes, bytes]]:
+) -> list[tuple[int, str, bytes, bytes]]:
     """
     Extract strings with surrounding context bytes.
 
@@ -185,15 +186,15 @@ def extract_strings_with_context(
 
             strings_with_context.append((offset, string, before_bytes, after_bytes))
 
-    except (OSError, IOError):
+    except OSError:
         pass
 
     return strings_with_context
 
 
 def filter_strings(
-    strings: List[Tuple[int, str]], search_term: str = "", case_sensitive: bool = False
-) -> List[Tuple[int, str]]:
+    strings: list[tuple[int, str]], search_term: str = "", case_sensitive: bool = False
+) -> list[tuple[int, str]]:
     """
     Filter strings based on search criteria.
 

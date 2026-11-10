@@ -15,26 +15,25 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from modules import file_ops
+from modules.archive_tools import list_archive_contents
+from modules.entropy_calculator import calculate_entropy, entropy_profile
 from modules.file_info import (
-    human_size,
-    compute_hashes,
-    read_file_info,
     HashCancelled,
     classify_path,
+    compute_hashes,
+    human_size,
+    read_file_info,
 )
-from modules.magic_sniffer import sniff_bytes, extension_mismatch
-from modules.strings_extractor import (
-    extract_strings_streaming,
-    extract_strings,
-    _build_pattern,
-)
-from modules.entropy_calculator import calculate_entropy, entropy_profile
-from modules import file_ops
 from modules.folder_tools import find_duplicates, scan_folder
 from modules.integrity_tools import create_snapshot, verify_snapshot
+from modules.magic_sniffer import extension_mismatch, sniff_bytes
 from modules.metadata_cache import MetadataCache
-from modules.archive_tools import list_archive_contents
-
+from modules.strings_extractor import (
+    _build_pattern,
+    extract_strings,
+    extract_strings_streaming,
+)
 
 # ── file_info ───────────────────────────────────────────────────────────────
 
@@ -121,7 +120,7 @@ def test_zip_based_office_is_not_a_mismatch():
 def test_streaming_matches_whole_file_scan(tmp_path, encoding):
     blob = (
         os.urandom(300_000)
-        + "unicode ü 日本 text".encode("utf-8") * 20
+        + "unicode ü 日本 text".encode() * 20
         + "wide".encode("utf-16-le") * 30
     )
     f = tmp_path / "r.bin"
@@ -142,7 +141,7 @@ def test_streaming_matches_whole_file_scan(tmp_path, encoding):
 
 def test_utf8_pattern_compiles_and_finds_text(tmp_path):
     f = tmp_path / "u.bin"
-    f.write_bytes(b"\0\0" + "héllo wörld".encode("utf-8") + b"\0")
+    f.write_bytes(b"\0\0" + "héllo wörld".encode() + b"\0")
     assert extract_strings(str(f), 4, "utf-8") == [(2, "héllo wörld")]
 
 

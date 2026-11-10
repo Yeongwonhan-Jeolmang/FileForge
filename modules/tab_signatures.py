@@ -4,26 +4,25 @@ tab_signatures.py — Display digital signature information for files.
 
 from __future__ import annotations
 
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
+    QProgressBar,
     QPushButton,
     QTextEdit,
-    QProgressBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 from modules.file_info import FileInfo
-from modules.widgets import SectionLabel, StatusBanner
-from modules.theme import TEXT_SECONDARY
 from modules.signature_inspector import (
-    inspect_signature,
-    check_pgp_signature,
     SignatureInfo,
+    check_pgp_signature,
+    inspect_signature,
 )
-
+from modules.theme import TEXT_SECONDARY
+from modules.widgets import SectionLabel, StatusBanner
 
 # ── Worker thread ─────────────────────────────────────────────────────────
 

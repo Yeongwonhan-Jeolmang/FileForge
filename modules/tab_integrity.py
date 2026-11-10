@@ -3,43 +3,44 @@ tab_integrity.py — File/folder integrity snapshot and verification UI.
 """
 
 from __future__ import annotations
+
 import os
 import threading
 from pathlib import Path
 
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
+    QCheckBox,
     QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
-    QProgressBar,
-    QCheckBox,
-    QHeaderView,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QObject
-from PyQt5.QtGui import QColor
 
 from modules.integrity_tools import (
     create_snapshot,
-    save_snapshot,
     load_snapshot,
+    save_snapshot,
     verify_snapshot,
 )
-from modules.widgets import SectionLabel, StatusBanner, Card
 from modules.theme import (
-    TEXT_SECONDARY,
-    TEXT_MUTED,
     ACCENT,
-    SUCCESS,
     ERROR,
-    WARNING,
     INFO,
+    SUCCESS,
+    TEXT_MUTED,
+    TEXT_SECONDARY,
+    WARNING,
 )
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 _STATUS_STYLE = {
     "missing": ("Missing", ERROR, "✕"),

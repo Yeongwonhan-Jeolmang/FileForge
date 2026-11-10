@@ -3,30 +3,31 @@ tab_timestamps.py — Precise timestamp editing with calendar pickers.
 """
 
 from __future__ import annotations
+
 import time
 from datetime import datetime
 
+from PyQt5.QtCore import QDateTime, Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDateTimeEdit,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
-    QDateTimeEdit,
     QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QDateTime, pyqtSignal
 
 from modules.file_info import FileInfo
 from modules.file_ops import (
+    can_set_created_time,
+    set_created_time,
     set_timestamps,
     touch_file,
-    set_created_time,
-    can_set_created_time,
 )
-from modules.widgets import SectionLabel, StatusBanner, Card
-from modules.theme import TEXT_SECONDARY, TEXT_MUTED
+from modules.theme import TEXT_MUTED, TEXT_SECONDARY
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 
 class TimestampsTab(QWidget):

@@ -6,32 +6,32 @@ app can read preferences without constructing a dialog.
 """
 
 from __future__ import annotations
+
+from PyQt5.QtCore import QSettings, Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTabWidget,
-    QWidget,
-    QLabel,
     QCheckBox,
     QComboBox,
-    QSpinBox,
-    QGroupBox,
-    QFormLayout,
+    QDialog,
     QDialogButtonBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QSpinBox,
+    QTabWidget,
     QTreeWidget,
     QTreeWidgetItem,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QSettings, pyqtSignal
 
 from modules.theme import (
-    WARNING,
-    THEME_NAMES,
-    THEME_NAME,
     DEFAULT_FONT_PX,
+    THEME_NAME,
+    THEME_NAMES,
+    WARNING,
 )
-
 
 HASH_ALGORITHMS = [
     ("md5", "MD5"),

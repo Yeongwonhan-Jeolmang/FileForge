@@ -3,54 +3,57 @@ tab_overview.py — "Overview" tab: summary cards for a loaded file.
 """
 
 from __future__ import annotations
+
 import os
+
+from PyQt5.QtCore import QObject, QSize, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QImageReader, QPixmap
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QGridLayout,
-    QScrollArea,
-    QFrame,
-    QPushButton,
-    QStackedWidget,
     QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, QSize
-from PyQt5.QtGui import QPixmap, QImageReader
+
+from modules.entropy_calculator import (
+    calculate_entropy,
+    entropy_description,
+    entropy_percentage,
+    entropy_profile,
+)
 from modules.file_info import FileInfo
-from modules.widgets import (
-    KVRow,
-    SectionLabel,
-    TagChip,
-    kind_icon,
-    kind_color,
-    Card,
-    EntropyGraph,
-    EmptyState,
-    copy_to_clipboard,
-    reveal_in_file_manager,
-    open_with_default_app,
-)
 from modules.theme import (
-    BG_MID,
     ACCENT,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    TEXT_MUTED,
+    BG_MID,
     BORDER,
     ERROR,
-    WARNING,
     INFO,
     PURPLE,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    WARNING,
     entropy_color,
     rgba,
 )
-from modules.entropy_calculator import (
-    calculate_entropy,
-    entropy_percentage,
-    entropy_description,
-    entropy_profile,
+from modules.widgets import (
+    Card,
+    EmptyState,
+    EntropyGraph,
+    KVRow,
+    SectionLabel,
+    TagChip,
+    copy_to_clipboard,
+    kind_color,
+    kind_icon,
+    open_with_default_app,
+    reveal_in_file_manager,
 )
 
 

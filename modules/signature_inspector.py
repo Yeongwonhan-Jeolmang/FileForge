@@ -3,13 +3,13 @@ signature_inspector.py — Inspect digital signatures in files.
 """
 
 from __future__ import annotations
-import platform
-import subprocess
-import os
-import re
+
 import json
+import os
+import platform
+import re
 import shutil
-from typing import Optional
+import subprocess
 from dataclasses import dataclass
 
 
@@ -17,14 +17,14 @@ from dataclasses import dataclass
 class SignatureInfo:
     is_signed: bool
     is_valid: bool = False
-    signer_name: Optional[str] = None
-    issuer_name: Optional[str] = None
-    serial_number: Optional[str] = None
-    thumbprint: Optional[str] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    signature_type: Optional[str] = None
-    error_message: Optional[str] = None
+    signer_name: str | None = None
+    issuer_name: str | None = None
+    serial_number: str | None = None
+    thumbprint: str | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    signature_type: str | None = None
+    error_message: str | None = None
 
 
 def inspect_signature_windows(file_path: str) -> SignatureInfo:
@@ -209,7 +209,7 @@ def inspect_signature(file_path: str) -> SignatureInfo:
 
 
 def check_pgp_signature(
-    file_path: str, sig_file_path: Optional[str] = None
+    file_path: str, sig_file_path: str | None = None
 ) -> SignatureInfo:
     """
     Check for PGP/GPG signature.

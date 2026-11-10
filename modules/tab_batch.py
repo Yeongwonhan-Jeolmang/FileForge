@@ -12,42 +12,43 @@ is on) is replaced by the template — handy for "Holiday_{n}" style renames.
 """
 
 from __future__ import annotations
+
 import os
 import re
 import time
 from pathlib import Path
 
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QLineEdit,
+    QAbstractItemView,
     QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
-    QFileDialog,
-    QAbstractItemView,
-    QSplitter,
-    QComboBox,
-    QSpinBox,
-    QMessageBox,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QColor
 
-from modules.file_ops import batch_rename_to, batch_rename_conflicts
-from modules.widgets import SectionLabel, StatusBanner, Card
+from modules.file_ops import batch_rename_conflicts, batch_rename_to
 from modules.theme import (
-    SUCCESS,
-    ERROR,
     ACCENT,
-    TEXT_SECONDARY,
+    ERROR,
+    SUCCESS,
     TEXT_MUTED,
+    TEXT_SECONDARY,
 )
+from modules.widgets import Card, SectionLabel, StatusBanner
 
 _CASES = [
     "Case: unchanged",
